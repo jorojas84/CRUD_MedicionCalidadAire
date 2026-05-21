@@ -11,3 +11,7 @@ class RegistroDuplicadoError(Exception):
 
 class RegistroNoEncontradoError(Exception):
     """Se lanza cuando no se encuentra un registro solicitado."""
+
+
+class ArchivoInvalidoError(Exception):
+    """Se lanza cuando un archivo de entrada (JSON) tiene formato incorrecto."""
