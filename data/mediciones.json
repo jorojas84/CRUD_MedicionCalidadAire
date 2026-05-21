@@ -1,0 +1,122 @@
+[
+    {
+        "tipo": "PM",
+        "id": "m-001",
+        "municipio": "Bogota",
+        "estacion": "Estacion Centro",
+        "fecha": "2026-05-11T08:00:00",
+        "medicion": 45.0,
+        "nivel": "Buena",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM10"
+    },
+    {
+        "tipo": "PM",
+        "id": "m-002",
+        "municipio": "Medellin",
+        "estacion": "Estacion Norte",
+        "fecha": "2026-05-12T08:00:00",
+        "medicion": 30.5,
+        "nivel": "Aceptable",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM2.5"
+    },
+    {
+        "tipo": "PM",
+        "id": "m-003",
+        "municipio": "Cali",
+        "estacion": "Estacion Sur",
+        "fecha": "2026-05-13T08:00:00",
+        "medicion": 8.5,
+        "nivel": "Buena",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM2.5"
+    },
+    {
+        "tipo": "PM",
+        "id": "m-101",
+        "municipio": "Cartagena",
+        "estacion": "Estacion Bahia",
+        "fecha": "2026-05-14T09:30:00",
+        "medicion": 70.0,
+        "nivel": "Aceptable",
+        "origen": "MANUAL",
+        "observacion": "Medicion agregada manualmente",
+        "diametro_aerodinamico": "PM10"
+    },
+    {
+        "tipo": "PM",
+        "id": "m-005",
+        "municipio": "Bucaramanga",
+        "estacion": "Estacion Centro",
+        "fecha": "2026-05-15T08:00:00",
+        "medicion": 120.0,
+        "nivel": "Aceptable",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM10"
+    },
+    {
+        "tipo": "PM",
+        "id": "m-006",
+        "municipio": "Manizales",
+        "estacion": "Estacion Sur",
+        "fecha": "2026-05-16T08:00:00",
+        "medicion": 18.2,
+        "nivel": "Aceptable",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM2.5"
+    },
+    {
+        "tipo": "PM",
+        "id": "m-007",
+        "municipio": "Pereira",
+        "estacion": "Estacion Rio",
+        "fecha": "2026-05-17T08:00:00",
+        "medicion": 200.0,
+        "nivel": "Daniña a la salud de grupos sensibles",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM10"
+    },
+    {
+        "tipo": "PM",
+        "id": "m-008",
+        "municipio": "Pasto",
+        "estacion": "Estacion Norte",
+        "fecha": "2026-05-18T08:00:00",
+        "medicion": 40.0,
+        "nivel": "Daniña a la salud de grupos sensibles",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM2.5"
+    },
+    {
+        "tipo": "PM",
+        "id": "m-102",
+        "municipio": "Barranquilla",
+        "estacion": "Estacion Puerto",
+        "fecha": "2026-05-19T10:15:00",
+        "medicion": 88.4,
+        "nivel": "Aceptable",
+        "origen": "MANUAL",
+        "observacion": "Medicion agregada manualmente",
+        "diametro_aerodinamico": "PM10"
+    },
+    {
+        "tipo": "PM",
+        "id": "m-009",
+        "municipio": "Ibague",
+        "estacion": "Estacion Plaza",
+        "fecha": "2026-05-20T08:00:00",
+        "medicion": 12.0,
+        "nivel": "Buena",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM2.5"
+    }
+]
