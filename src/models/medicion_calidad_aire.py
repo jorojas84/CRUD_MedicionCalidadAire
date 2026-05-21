@@ -16,7 +16,8 @@ class MedicionCalidadAire(Medicion):
     contaminante nuevo no requiere modificar esta clase).
     """
 
-    # Categorias del Indice de Calidad del Aire (Res. 2254 de 2017, Tabla 6).
+    # Categorias del Indice de Calidad del Aire (Res. 2254 de 2017, Tabla 6)
+    # https://www.minambiente.gov.co/wp-content/uploads/2021/10/Resolucion-2254-de-2017.pdf.
     BUENA: ClassVar[str] = "Buena"
     ACEPTABLE: ClassVar[str] = "Aceptable"
     DANINA_SENSIBLES: ClassVar[str] = "Daniña a la salud de grupos sensibles"
@@ -57,6 +58,7 @@ class MedicionCalidadAirePM(MedicionCalidadAire):
     DIAMETROS_VALIDOS: ClassVar[tuple] = (PM10, PM25)
 
     # Puntos de corte del ICA segun Tabla 6 de la Res. 2254 de 2017
+    # https://www.minambiente.gov.co/wp-content/uploads/2021/10/Resolucion-2254-de-2017.pdf
     # (concentracion en µg/m³, promedio 24h).
     _PUNTOS_CORTE: ClassVar[dict] = {
         PM10: [
