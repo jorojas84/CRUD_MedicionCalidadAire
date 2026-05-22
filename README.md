@@ -53,3 +53,4 @@ Ejecutar desde la raiz del proyecto:
 ```bash
 pytest
 ```
+# EstacionAmbiental module - Auto-test with pre-commit hook
