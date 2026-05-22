@@ -1,18 +1,61 @@
 """Modelo de la entidad EstacionAmbiental."""
 
+from __future__ import annotations
+
+from typing import Any, ClassVar
+
+
+class EstacionError(ValueError):
+    """Error base del modelo de estacion."""
+
+
+class EstacionValidationError(EstacionError):
+    """Error para datos invalidos de estacion."""
+
+
+class DuplicateEstacionError(EstacionError):
+    """Error para IDs de estacion duplicados."""
+
 
 class EstacionAmbiental:
     """Representa una estacion ambiental."""
 
-    def __init__(self, id_estacion, nombre, municipio, tipo_estacion, estado):
-        # Datos de la estacion
-        self.id_estacion = (id_estacion or "").strip()
-        self.nombre = (nombre or "").strip()
-        self.municipio = (municipio or "").strip()
-        self.tipo_estacion = (tipo_estacion or "").strip()
-        self.estado = (estado or "").strip()
+    ESTADOS_VALIDOS: ClassVar[set[str]] = {"Activa", "Inactiva"}
 
-    def to_dict(self):
+    def __init__(
+        self,
+        id_estacion: str,
+        nombre: str,
+        municipio: str,
+        tipo_estacion: str,
+        estado: str,
+    ) -> None:
+        # Normaliza entradas de texto
+        self.id_estacion: str = self._normalizar(id_estacion)
+        self.nombre: str = self._normalizar(nombre)
+        self.municipio: str = self._normalizar(municipio)
+        self.tipo_estacion: str = self._normalizar(tipo_estacion)
+        self.estado: str = self._normalizar(estado)
+
+        self._validar()
+
+    @staticmethod
+    def _normalizar(valor: str | None) -> str:
+        return (valor or "").strip()
+
+    def _validar(self) -> None:
+        if not self.id_estacion:
+            raise EstacionValidationError("id_estacion es obligatorio")
+        if not self.nombre:
+            raise EstacionValidationError("nombre es obligatorio")
+        if not self.municipio:
+            raise EstacionValidationError("municipio es obligatorio")
+        if self.estado not in self.ESTADOS_VALIDOS:
+            raise EstacionValidationError(
+                "estado debe ser exactamente 'Activa' o 'Inactiva'"
+            )
+
+    def to_dict(self) -> dict[str, str]:
         """Convierte el objeto a diccionario."""
         return {
             "id_estacion": self.id_estacion,
@@ -23,8 +66,11 @@ class EstacionAmbiental:
         }
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: dict[str, Any]) -> "EstacionAmbiental":
         """Crea una estacion desde un diccionario."""
+        if not isinstance(data, dict):
+            raise EstacionValidationError("data debe ser un diccionario")
+
         return cls(
             id_estacion=data.get("id_estacion", ""),
             nombre=data.get("nombre", ""),

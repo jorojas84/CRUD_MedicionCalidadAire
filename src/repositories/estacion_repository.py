@@ -7,10 +7,12 @@ from pathlib import Path
 
 from src.exceptions.custom_exceptions import (
     ArchivoInvalidoError,
-    RegistroDuplicadoError,
     RegistroNoEncontradoError,
 )
-from src.models.estacion_ambiental import EstacionAmbiental
+from src.models.estacion_ambiental import (
+    DuplicateEstacionError,
+    EstacionAmbiental,
+)
 
 
 class EstacionRepository:
@@ -27,7 +29,7 @@ class EstacionRepository:
     def crear(self, estacion: EstacionAmbiental) -> EstacionAmbiental:
         """Guarda una estacion nueva evitando IDs repetidos."""
         if self.buscar(estacion.id_estacion) is not None:
-            raise RegistroDuplicadoError(
+            raise DuplicateEstacionError(
                 f"Ya existe una estacion con id {estacion.id_estacion}"
             )
 
