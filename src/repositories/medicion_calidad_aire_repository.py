@@ -16,21 +16,22 @@ from src.exceptions.custom_exceptions import (
     RegistroDuplicadoError,
     RegistroNoEncontradoError,
 )
-from src.models.medicion import Medicion
-from src.models.medicion_calidad_aire import MedicionCalidadAirePM
+from src.models.medicion_calidad_aire import (
+    MedicionCalidadAire,
+    MedicionCalidadAirePM,
+)
 
 
-# Registro de tipos concretos de medicion soportados al deserializar.
-# Para sumar un contaminante nuevo (CO, SO2, NO2, O3...) basta con
-# registrarlo aqui sin tocar el resto del repositorio (OCP).
-_TIPOS_MEDICION: dict[str, type[Medicion]] = {
+# Registro de tipos concretos soportados al deserializar.
+# Para sumar un contaminante (CO, SO2, NO2, O3...) basta con registrarlo
+# aqui sin tocar el resto del repositorio (OCP).
+_TIPOS_MEDICION: dict[str, type[MedicionCalidadAire]] = {
     "PM": MedicionCalidadAirePM,
 }
 
 
-def _deserializar_medicion(item: dict) -> Medicion:
-    """Crea la subclase concreta de `Medicion` que corresponda al dict."""
-    # Compatibilidad: si el JSON no trae `tipo`, lo inferimos por sus campos.
+def _deserializar_medicion(item: dict) -> MedicionCalidadAire:
+    """Crea la subclase concreta que corresponda al dict."""
     tipo = item.get("tipo")
     if not tipo and "diametro_aerodinamico" in item:
         tipo = "PM"
@@ -41,24 +42,19 @@ def _deserializar_medicion(item: dict) -> Medicion:
 
 
 class IMedicionRepository(ABC):
-    """Contrato CRUD que debe cumplir cualquier implementacion de persistencia.
-
-    El Controller depende de esta interfaz, no de una implementacion
-    concreta (DIP), lo que permite intercambiar el backend (JSON, SQLite,
-    HTTP, en memoria para tests...) sin modificar las capas superiores.
-    """
+    """Contrato CRUD que debe cumplir cualquier implementacion de persistencia."""
 
     @abstractmethod
-    def crear_medicion(self, medicion: Medicion) -> Medicion: ...
+    def crear_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire: ...
 
     @abstractmethod
-    def listar_mediciones(self) -> list[Medicion]: ...
+    def listar_mediciones(self) -> list[MedicionCalidadAire]: ...
 
     @abstractmethod
-    def buscar_medicion_por_id(self, medicion_id: str) -> Medicion | None: ...
+    def buscar_medicion_por_id(self, medicion_id: str) -> MedicionCalidadAire | None: ...
 
     @abstractmethod
-    def actualizar_medicion(self, medicion: Medicion) -> Medicion: ...
+    def actualizar_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire: ...
 
     @abstractmethod
     def eliminar_medicion(self, medicion_id: str) -> bool: ...
@@ -76,7 +72,7 @@ class MedicionRepository(IMedicionRepository):
         self._asegurar_archivo()
 
     # ── operaciones del repositorio ──────────────────────────────────
-    def crear_medicion(self, medicion: Medicion) -> Medicion:
+    def crear_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire:
         if self.buscar_medicion_por_id(medicion.id) is not None:
             raise RegistroDuplicadoError(
                 f"Ya existe una medicion con id {medicion.id}"
@@ -86,16 +82,16 @@ class MedicionRepository(IMedicionRepository):
         self._guardar_json(data)
         return medicion
 
-    def listar_mediciones(self) -> list[Medicion]:
+    def listar_mediciones(self) -> list[MedicionCalidadAire]:
         return [_deserializar_medicion(item) for item in self._leer_json()]
 
-    def buscar_medicion_por_id(self, medicion_id: str) -> Medicion | None:
+    def buscar_medicion_por_id(self, medicion_id: str) -> MedicionCalidadAire | None:
         for item in self._leer_json():
             if item.get("id") == medicion_id:
                 return _deserializar_medicion(item)
         return None
 
-    def actualizar_medicion(self, medicion: Medicion) -> Medicion:
+    def actualizar_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire:
         data = self._leer_json()
         for idx, item in enumerate(data):
             if item.get("id") == medicion.id:
@@ -125,7 +121,7 @@ class MedicionRepository(IMedicionRepository):
         self._guardar_json(data)
         return True
 
-    # ── E/S del archivo JSON (detalle de implementacion) ─────────────
+    # ── E/S del archivo JSON ─────────────────────────────────────────
     def _asegurar_archivo(self) -> None:
         self._data_file.parent.mkdir(parents=True, exist_ok=True)
         if not self._data_file.exists():

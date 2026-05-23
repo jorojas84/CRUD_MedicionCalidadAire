@@ -22,13 +22,14 @@ Diseño:
 from datetime import datetime
 from typing import Iterable, Optional
 
-from src.models.medicion import Medicion
+from src.models.medicion_calidad_aire import MedicionCalidadAire
 
 
-# Campos comunes a toda `Medicion` (orden en el que se muestran).
+# Campos comunes a toda `MedicionCalidadAire` (orden en el que se muestran).
 # Todo lo que la subclase agregue en `to_dict()` aparece como "detalle".
 _CAMPOS_COMUNES: tuple[str, ...] = (
-    "id", "municipio", "estacion", "fecha", "medicion", "nivel", "origen",
+    "id", "codigo_dane_municipio", "id_estacion",
+    "fecha", "medicion", "nivel", "origen",
 )
 # Claves que `to_dict` incluye pero no aportan a la columna "detalles".
 _CAMPOS_OMITIDOS_EN_DETALLES: frozenset[str] = frozenset(
@@ -47,7 +48,7 @@ class MedicionView:
         self._print(f"[ERROR] {mensaje}")
 
     # ── salida: listado polimorfico de mediciones ────────────────────
-    def show_mediciones(self, mediciones: Iterable[Medicion]) -> None:
+    def show_mediciones(self, mediciones: Iterable[MedicionCalidadAire]) -> None:
         mediciones = list(mediciones)
         if not mediciones:
             self._print("No hay mediciones registradas.")
@@ -55,10 +56,10 @@ class MedicionView:
         for linea in self._formatear_tabla(mediciones):
             self._print(linea)
 
-    def _formatear_tabla(self, mediciones: list[Medicion]) -> list[str]:
+    def _formatear_tabla(self, mediciones: list[MedicionCalidadAire]) -> list[str]:
         """Arma el listado tabular (sin imprimir). Aislado para testear."""
         encabezado = (
-            f"{'ID':<12} {'MUNICIPIO':<12} {'ESTACION':<20} "
+            f"{'ID':<12} {'COD_DANE':<10} {'ID_ESTACION':<14} "
             f"{'FECHA':<20} {'VALOR':<8} {'NIVEL':<35} "
             f"{'ORIGEN':<11} DETALLES"
         )
@@ -67,14 +68,14 @@ class MedicionView:
             lineas.append(self._formatear_fila(m))
         return lineas
 
-    def _formatear_fila(self, m: Medicion) -> str:
+    def _formatear_fila(self, m: MedicionCalidadAire) -> str:
         datos = m.to_dict()
         detalles = self._formatear_detalles(datos)
         fecha_str = self._formatear_fecha(datos.get("fecha"))
         return (
             f"{str(datos.get('id', '')):<12} "
-            f"{str(datos.get('municipio', '')):<12} "
-            f"{str(datos.get('estacion', '')):<20} "
+            f"{str(datos.get('codigo_dane_municipio', '')):<10} "
+            f"{str(datos.get('id_estacion', '')):<14} "
             f"{fecha_str:<20} "
             f"{str(datos.get('medicion', '')):<8} "
             f"{str(datos.get('nivel', '')):<35} "

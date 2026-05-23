@@ -1,6 +1,36 @@
 # Observatorio Calidad Aire
 
-Proyecto base en Python con arquitectura MVC simple y persistencia JSON.
+Sistema de gestion y consulta de calidad del aire a nivel municipal.
+
+## Descripcion del sistema
+
+El observatorio administra un catalogo de **municipios** y **estaciones
+de monitoreo**, donde cada estacion esta asociada a un municipio. Sobre
+ese catalogo se registran **mediciones** de contaminantes criterio
+(PM2.5, PM10, etc.) provenientes de los sensores en campo, y se
+**generan alertas** de forma automatica cuando un valor supera los
+umbrales establecidos por la normativa vigente (Res. 2254 de 2017).
+
+### Origen de las mediciones
+
+Las mediciones llegan al sistema por dos vias y reciben un tratamiento
+distinto segun su procedencia:
+
+- **Automaticas (sensor)**: se ingieren desde un archivo de datos.
+  Son **inmutables**: no pueden modificarse ni eliminarse, garantizando
+  trazabilidad de la fuente original.
+- **Manuales (operador)**: las registra un empleado autorizado. Admiten
+  edicion y borrado posterior.
+
+### Roles
+
+| Rol | Capacidades |
+|---|---|
+| **Empleado** | Administra el catalogo (municipios y estaciones), registra mediciones y alertas manuales, y gestiona el ciclo de vida (editar/eliminar) de los registros que el mismo crea. |
+| **Usuario** | Solo consulta: estado actual del aire por municipio o estacion y alertas activas. No tiene capacidades de escritura. |
+
+---
+
 
 ## Instalacion
 
@@ -34,17 +64,46 @@ python -m src.main
 - `data/alertas.json`: persistencia de alertas.
 - `tests`: pruebas unitarias con `pytest`.
 
-## Modulo implementado
+## Modulos implementados
 
-Se implementa completamente el modulo `AlertaAmbiental`:
+El proyecto se desarrolla en equipo. Cada modulo sigue el patron
+MVC + Repository y cuenta con pruebas unitarias propias.
 
-- Modelo con validaciones y regla de negocio (`nivel = Alto` fuerza `estado = Activa`).
+### `AlertaAmbiental`
+- Modelo con validaciones y regla de negocio (`nivel = Alto` fuerza
+  `estado = Activa`).
 - Repository con CRUD completo y persistencia JSON.
-- Controller para conectar `main.py` con repository.
-- Menu de consola para pruebas manuales.
-- Pruebas unitarias del modulo.
+- Controller conectado al `main.py`.
+- Menu de consola y pruebas unitarias.
 
-Las entidades `estacion_ambiental`, `municipio` y `medicion_calidad_aire` quedan como placeholders para otros integrantes.
+### `Municipio`
+- Modelo con `codigo_dane` como identificador unico.
+- Repository con CRUD sobre `data/municipios.json`.
+- Controller integrado con el patron Decorator (`EmailNotificationDecorator`)
+  para notificaciones por correo.
+- Vista de consola con menu propio.
+
+### `EstacionAmbiental`
+- Modelo con validaciones (estado `Activa/Inactiva`, normalizacion de
+  campos, IDs unicos).
+- Repository con CRUD sobre `data/estaciones.json` y escritura atomica
+  (archivo temporal + `os.replace`).
+- Cobertura de pruebas: modelo, repositorio y persistencia JSON.
+
+### `MedicionCalidadAire`
+- Modelo abstracto que clasifica el ICA segun los puntos de corte de la
+  **Res. 2254 de 2017 (Tabla 6)**; cada contaminante criterio se
+  implementa como subclase concreta (hoy `MedicionCalidadAirePM` para
+  PM10 y PM2.5; CO/SO2/NO2/O3 se agregan sin modificar el resto).
+- Reglas de origen del dato: las mediciones **AUTOMATICAS** del sensor
+  son inmutables; las **MANUALES** del operador admiten edicion y
+  borrado.
+- Repository con CRUD sobre `data/mediciones.json` y polimorfismo en la
+  deserializacion (recupera la subclase concreta segun `tipo`).
+- Controller que orquesta CRUD + sincronizacion del sensor (no
+  sobreescribe mediciones manuales) y **autorregistra estaciones
+  desconocidas** consultando `EstacionRepository`.
+- Vista de consola polimorfica que se adapta a cualquier subclase.
 
 ## Pruebas unitarias
 
@@ -53,4 +112,3 @@ Ejecutar desde la raiz del proyecto:
 ```bash
 pytest
 ```
-# EstacionAmbiental module - Auto-test with pre-commit hook
