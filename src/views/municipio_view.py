@@ -7,6 +7,10 @@ from src.exceptions.municipio_exceptions import (
     ReglaNegocioMunicipioError,
 )
 
+from src.controllers.municipio_controller import MunicipioController
+from src.controllers.municipio_decorator import MunicipioControllerNotificador # <-- Importa el decorador
+
+        
 
 class MunicipioView:
     """Interfaz de consola para CRUD de municipios."""
@@ -72,3 +76,8 @@ class MunicipioView:
         region = input("Region: ").strip()
         estado = input("Estado (Activo/Inactivo): ").strip()
         return id_municipio, nombre, departamento, region, estado
+
+    def __init__(self, controller=None):
+        # Envolvemos el controlador original con el Decorador
+        controlador_base = controller or MunicipioController()
+        self.controller = MunicipioControllerNotificador(controlador_base)
