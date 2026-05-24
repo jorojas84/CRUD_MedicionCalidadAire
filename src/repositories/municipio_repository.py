@@ -1,54 +1,64 @@
+"""Repositorio JSON para CRUD de Municipios."""
+
 import json
-import os
-from typing import List, Optional
+from pathlib import Path
+
 from src.models.municipio import Municipio
 
+
 class MunicipioRepository:
-    def __init__(self, file_path: str = 'data/municipios.json'):
-        self.file_path = file_path
+    """Gestiona persistencia de municipios en archivo JSON."""
+
+    def __init__(self, data_file=None):
+        default_path = Path(__file__).resolve().parents[2] / "data" / "municipios.json"
+        self.data_file = Path(data_file) if data_file else default_path
         self._asegurar_archivo()
 
     def _asegurar_archivo(self):
-        if not os.path.exists('data'):
-            os.makedirs('data')
-        if not os.path.exists(self.file_path):
-            with open(self.file_path, 'w', encoding='utf-8') as f:
-                json.dump([], f)
+        self.data_file.parent.mkdir(parents=True, exist_ok=True)
+        if not self.data_file.exists():
+            self._guardar_json([])
 
-    def obtener_todos(self) -> List[Municipio]:
-        with open(self.file_path, 'r', encoding='utf-8') as f:
-            datos = json.load(f)
-            return [Municipio.from_dict(d) for d in datos]
+    def _leer_json(self):
+        try:
+            with self.data_file.open("r", encoding="utf-8") as file:
+                data = json.load(file)
+                return data if isinstance(data, list) else []
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
 
-    def guardar_todos(self, municipios: List[Municipio]) -> None:
-        with open(self.file_path, 'w', encoding='utf-8') as f:
-            json.dump([m.to_dict() for m in municipios], f, indent=4)
+    def _guardar_json(self, data):
+        with self.data_file.open("w", encoding="utf-8") as file:
+            json.dump(data, file, indent=4, ensure_ascii=False)
 
-    def crear(self, municipio: Municipio) -> None:
-        municipios = self.obtener_todos()
-        municipios.append(municipio)
-        self.guardar_todos(municipios)
+    def crear(self, municipio):
+        data = self._leer_json()
+        data.append(municipio.to_dict())
+        self._guardar_json(data)
+        return municipio
 
-    def obtener_por_codigo(self, codigo_dane: str) -> Optional[Municipio]:
-        municipios = self.obtener_todos()
-        for m in municipios:
-            if m.codigo_dane == codigo_dane:
-                return m
+    def listar(self):
+        return [Municipio.from_dict(item) for item in self._leer_json()]
+
+    def buscar_por_id(self, id_municipio):
+        for item in self._leer_json():
+            if item.get("id_municipio") == id_municipio:
+                return Municipio.from_dict(item)
         return None
 
-    def actualizar(self, municipio_actualizado: Municipio) -> bool:
-        municipios = self.obtener_todos()
-        for i, m in enumerate(municipios):
-            if m.codigo_dane == municipio_actualizado.codigo_dane:
-                municipios[i] = municipio_actualizado
-                self.guardar_todos(municipios)
-                return True
-        return False
+    def actualizar(self, id_municipio, municipio_actualizado):
+        data = self._leer_json()
+        for index, item in enumerate(data):
+            if item.get("id_municipio") == id_municipio:
+                data[index] = municipio_actualizado.to_dict()
+                self._guardar_json(data)
+                return municipio_actualizado
+        return None
 
-    def eliminar(self, codigo_dane: str) -> bool:
-        municipios = self.obtener_todos()
-        municipios_filtrados = [m for m in municipios if m.codigo_dane != codigo_dane]
-        if len(municipios) != len(municipios_filtrados):
-            self.guardar_todos(municipios_filtrados)
-            return True
-        return False
+    def eliminar(self, id_municipio):
+        data = self._leer_json()
+        filtrados = [item for item in data if item.get("id_municipio") != id_municipio]
+        if len(filtrados) == len(data):
+            return False
+        self._guardar_json(filtrados)
+        return True

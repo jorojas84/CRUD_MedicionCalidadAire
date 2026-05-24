@@ -7,30 +7,16 @@ Sistema de gestion y consulta de calidad del aire a nivel municipal.
 El observatorio administra un catalogo de **municipios** y **estaciones
 de monitoreo**, donde cada estacion esta asociada a un municipio. Sobre
 ese catalogo se registran **mediciones** de contaminantes criterio
-(PM2.5, PM10, etc.) provenientes de los sensores en campo, y se
-**generan alertas** de forma automatica cuando un valor supera los
-umbrales establecidos por la normativa vigente (Res. 2254 de 2017).
+(PM2.5, PM10, etc.) y se administran **alertas ambientales**.
 
-### Origen de las mediciones
+## Arquitectura y enfoque
 
-Las mediciones llegan al sistema por dos vias y reciben un tratamiento
-distinto segun su procedencia:
+El proyecto se desarrolla con:
 
-- **Automaticas (sensor)**: se ingieren desde un archivo de datos.
-  Son **inmutables**: no pueden modificarse ni eliminarse, garantizando
-  trazabilidad de la fuente original.
-- **Manuales (operador)**: las registra un empleado autorizado. Admiten
-  edicion y borrado posterior.
-
-### Roles
-
-| Rol | Capacidades |
-|---|---|
-| **Empleado** | Administra el catalogo (municipios y estaciones), registra mediciones y alertas manuales, y gestiona el ciclo de vida (editar/eliminar) de los registros que el mismo crea. |
-| **Usuario** | Solo consulta: estado actual del aire por municipio o estacion y alertas activas. No tiene capacidades de escritura. |
-
----
-
+- Patron **MVC** (Model - View - Controller).
+- Patron **Repository/DAO** para persistencia.
+- Archivos **JSON** como almacenamiento local.
+- Validaciones de dominio y excepciones personalizadas.
 
 ## Instalacion
 
@@ -54,61 +40,92 @@ Desde la carpeta `observatorio_calidad_aire`, ejecutar:
 python -m src.main
 ```
 
-## Estructura
+El menu principal actual permite acceder a:
+
+1. Modulo Estaciones
+2. Modulo Municipios
+3. Modulo Mediciones
+4. Modulo Alertas
+5. Salir
+
+## Estructura del proyecto
 
 - `src/models`: entidades del dominio.
 - `src/repositories`: acceso a datos en archivos JSON.
-- `src/controllers`: logica de coordinacion entre vista consola y repositorio.
+- `src/controllers`: logica de coordinacion entre vistas y repositorios.
+- `src/views`: menus de consola por modulo.
 - `src/exceptions`: excepciones personalizadas.
-- `src/views`, `src/services`, `src/decorators`: reservados para futuras actividades.
-- `data/alertas.json`: persistencia de alertas.
-- `tests`: pruebas unitarias con `pytest`.
+- `data/`: archivos JSON de persistencia.
+- `tests/`: pruebas unitarias con `pytest`.
+- `entregables/actividad7/`: evidencias individuales por integrante.
 
-## Modulos implementados
+## Modulos implementados (Actividad 7)
 
-El proyecto se desarrolla en equipo. Cada modulo sigue el patron
-MVC + Repository y cuenta con pruebas unitarias propias.
+Cada modulo incluye modelo, repository, controller, view, validaciones,
+reglas de negocio y pruebas unitarias.
 
-### `AlertaAmbiental`
-- Modelo con validaciones y regla de negocio (`nivel = Alto` fuerza
-  `estado = Activa`).
-- Repository con CRUD completo y persistencia JSON.
-- Controller conectado al `main.py`.
-- Menu de consola y pruebas unitarias.
+### EstacionAmbiental
 
-### `Municipio`
-- Modelo con `codigo_dane` como identificador unico.
-- Repository con CRUD sobre `data/municipios.json`.
-- Controller integrado con el patron Decorator (`EmailNotificationDecorator`)
-  para notificaciones por correo.
-- Vista de consola con menu propio.
+- CRUD completo sobre `data/estaciones.json`.
+- Validaciones de campos obligatorios y estado `Activa/Inactiva`.
+- Regla de negocio: no permitir estaciones duplicadas por `id_estacion`.
 
-### `EstacionAmbiental`
-- Modelo con validaciones (estado `Activa/Inactiva`, normalizacion de
-  campos, IDs unicos).
-- Repository con CRUD sobre `data/estaciones.json` y escritura atomica
-  (archivo temporal + `os.replace`).
-- Cobertura de pruebas: modelo, repositorio y persistencia JSON.
+### Municipio
 
-### `MedicionCalidadAire`
-- Modelo abstracto que clasifica el ICA segun los puntos de corte de la
-  **Res. 2254 de 2017 (Tabla 6)**; cada contaminante criterio se
-  implementa como subclase concreta (hoy `MedicionCalidadAirePM` para
-  PM10 y PM2.5; CO/SO2/NO2/O3 se agregan sin modificar el resto).
-- Reglas de origen del dato: las mediciones **AUTOMATICAS** del sensor
-  son inmutables; las **MANUALES** del operador admiten edicion y
-  borrado.
-- Repository con CRUD sobre `data/mediciones.json` y polimorfismo en la
-  deserializacion (recupera la subclase concreta segun `tipo`).
-- Controller que orquesta CRUD + sincronizacion del sensor (no
-  sobreescribe mediciones manuales) y **autorregistra estaciones
-  desconocidas** consultando `EstacionRepository`.
-- Vista de consola polimorfica que se adapta a cualquier subclase.
+- CRUD completo sobre `data/municipios.json`.
+- Validaciones de campos obligatorios y estado `Activo/Inactivo`.
+- Regla de negocio: no permitir municipios duplicados por `id_municipio`.
+
+### MedicionCalidadAire
+
+- CRUD completo sobre `data/mediciones.json`.
+- Validaciones de campos obligatorios y valor no negativo.
+- Regla de negocio: clasificacion automatica por nivel:
+  - menor a 50: `Bajo`
+  - entre 50 y 100: `Medio`
+  - mayor a 100: `Alto`
+
+### AlertaAmbiental
+
+- CRUD completo sobre `data/alertas.json`.
+- Validaciones de campos obligatorios, nivel y estado permitidos.
+- Regla de negocio: si el `nivel` es `Alto`, el `estado` final es `Activa`.
+
+## Excepciones personalizadas
+
+- `DatoInvalidoError`
+- `RegistroDuplicadoError`
+- `RegistroNoEncontradoError`
+- `ArchivoInvalidoError`
 
 ## Pruebas unitarias
 
 Ejecutar desde la raiz del proyecto:
 
 ```bash
-pytest
+pytest -v
 ```
+
+Estado actual de la Actividad 7:
+
+- 10 pruebas de AlertaAmbiental
+- 10 pruebas de EstacionAmbiental
+- 10 pruebas de Municipio
+- 10 pruebas de MedicionCalidadAire
+
+Total: **40 pruebas unitarias**.
+
+## Integrantes y entidad asignada
+
+| Integrante | Entidad | Estado |
+|---|---|---|
+| Liz Giselle Tuiran Alvarez | AlertaAmbiental | Implementado |
+| Integrante 2 | EstacionAmbiental | Implementado |
+| Integrante 3 | Municipio | Implementado |
+| Integrante 4 | MedicionCalidadAire | Implementado |
+
+## Nota de continuidad
+
+La prioridad actual corresponde a **Actividad 7**. La base quedo lista
+para iniciar **Actividad 8 (GoF)** en la siguiente fase sin afectar la
+estabilidad del sistema actual.

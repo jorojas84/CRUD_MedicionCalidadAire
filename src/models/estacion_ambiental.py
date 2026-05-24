@@ -30,13 +30,11 @@ class EstacionAmbiental:
         tipo_estacion: str,
         estado: str,
     ) -> None:
-        # Normaliza entradas de texto
         self.id_estacion: str = self._normalizar(id_estacion)
         self.nombre: str = self._normalizar(nombre)
         self.municipio: str = self._normalizar(municipio)
         self.tipo_estacion: str = self._normalizar(tipo_estacion)
         self.estado: str = self._normalizar(estado)
-
         self._validar()
 
     @staticmethod
@@ -56,7 +54,6 @@ class EstacionAmbiental:
             )
 
     def to_dict(self) -> dict[str, str]:
-        """Convierte el objeto a diccionario."""
         return {
             "id_estacion": self.id_estacion,
             "nombre": self.nombre,
@@ -67,7 +64,6 @@ class EstacionAmbiental:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "EstacionAmbiental":
-        """Crea una estacion desde un diccionario."""
         if not isinstance(data, dict):
             raise EstacionValidationError("data debe ser un diccionario")
 
