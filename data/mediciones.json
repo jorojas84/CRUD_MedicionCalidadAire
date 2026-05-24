@@ -1,1 +1,11 @@
-[]
+[
+    {
+        "id_medicion": "1",
+        "id_estacion": "id1",
+        "contaminante": "contaminante uno",
+        "valor": 11.0,
+        "unidad": "unidad",
+        "fecha": "2026-05-23",
+        "nivel": "Bajo"
+    }
+]
