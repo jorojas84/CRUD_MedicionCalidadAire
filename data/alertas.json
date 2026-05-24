@@ -1,1 +1,18 @@
-[]
+[
+    {
+        "id_alerta": "1",
+        "id_medicion": "10",
+        "nivel": "Alto",
+        "descripcion": "Nivel Alto",
+        "fecha": "2026-05-23",
+        "estado": "Activa"
+    },
+    {
+        "id_alerta": "2",
+        "id_medicion": "20",
+        "nivel": "Alto",
+        "descripcion": "Alto Nivel",
+        "fecha": "2026-05-23",
+        "estado": "Activa"
+    }
+]

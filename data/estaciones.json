@@ -1,1 +1,9 @@
-[]
+[
+    {
+        "id_estacion": "1",
+        "nombre": "uno",
+        "municipio": "municipio uno",
+        "tipo_estacion": "estación uno",
+        "estado": "Activa"
+    }
+]
