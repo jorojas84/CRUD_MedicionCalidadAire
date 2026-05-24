@@ -9,8 +9,11 @@
 - `src/repositories/medicion_calidad_aire_repository.py` — persistencia JSON.
 - `src/controllers/medicion_calidad_aire_controller.py` — casos de uso.
 - `src/views/medicion_calidad_aire_view.py` — menu de consola y prompts.
-- `src/factories/medicion_factory.py` — registro `tipo -> clase` para crear
-  y deserializar mediciones (patron Factory).
+- `src/factories/medicion_creator.py` — `MedicionCreator` (ABC) y
+  `PMCreator` concreto: jerarquia paralela a la de productos
+  (Factory Method de GoF).
+- `src/factories/medicion_factory.py` — registro `tipo -> MedicionCreator`
+  que delega la instanciacion en el creador correspondiente.
 - `data/mediciones.json` — datos de ejemplo (4 AUTOMATICAS + 3 MANUALES).
 - `tests/test_medicion_repository.py` — pruebas del repositorio (10).
 - `tests/test_medicion_modelo.py` — pruebas del modelo: clasificacion ICA y
@@ -39,9 +42,12 @@
 - **MVC:** modelo, vista y controlador separados.
 - **Repository:** `IMedicionRepository` define el contrato CRUD;
   `MedicionRepository` lo implementa sobre JSON.
-- **Factory:** `MedicionFactory` centraliza el mapa `tipo -> clase`
-  concreta. Agregar un contaminante nuevo (SO2, NO2, CO, O3...) requiere
-  unicamente registrar su subclase en la factory (OCP).
+- **Factory Method (GoF):** jerarquia abstracta `MedicionCreator` con
+  un creador concreto por contaminante (`PMCreator`). `MedicionFactory`
+  mantiene el registro `tipo -> creador` y delega la instanciacion en el
+  creador correspondiente. Agregar un contaminante nuevo (SO2, NO2, CO,
+  O3...) solo requiere crear su `MedicionCreator` concreto y registrarlo
+  en la factory (OCP).
 
 ## Datos de ejemplo
 

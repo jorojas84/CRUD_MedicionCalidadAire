@@ -15,7 +15,10 @@ El proyecto se desarrolla con:
 
 - Patron **MVC** (Model - View - Controller).
 - Patron **Repository/DAO** para persistencia.
-- Patron **Factory** para instanciar mediciones por contaminante (`src/factories/medicion_factory.py`).
+- Patron **Factory Method** (GoF) para instanciar mediciones por
+  contaminante: jerarquia `MedicionCreator` paralela a la de productos
+  (`src/factories/medicion_creator.py`), con un registro central en
+  `src/factories/medicion_factory.py`.
 - Archivos **JSON** como almacenamiento local.
 - Validaciones de dominio y excepciones personalizadas.
 
@@ -83,8 +86,8 @@ reglas de negocio y pruebas unitarias.
 - CRUD completo sobre `data/mediciones.json`.
 - Modelo polimorfico: clase base abstracta `MedicionCalidadAire` y una
   subclase por contaminante (actualmente `MedicionCalidadAirePM` para
-  PM10 y PM2.5). Agregar un contaminante nuevo solo requiere registrar
-  su subclase en `MedicionFactory` (OCP).
+  PM10 y PM2.5). Agregar un contaminante nuevo solo requiere crear un
+  `MedicionCreator` concreto y registrarlo en `MedicionFactory` (OCP).
 - Distincion entre mediciones `MANUAL` (creadas/editables por el
   usuario) y `AUTOMATICO` (provenientes de sensores; inmutables).
 - Integridad referencial: al crear una medicion se valida que el

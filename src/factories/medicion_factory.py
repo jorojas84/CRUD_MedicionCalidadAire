@@ -1,49 +1,47 @@
-"""Factory de mediciones de calidad del aire.
+"""Registro central de creadores de mediciones (Factory Method).
 
-Centraliza la relacion `tipo -> clase concreta` para que tanto el
-repositorio (al deserializar el JSON) como el controller (al crear una
-medicion nueva) usen el mismo registro. Para agregar un contaminante
-nuevo basta con registrar su subclase aqui (OCP).
+`MedicionFactory` mantiene el mapa `tipo -> MedicionCreator` y delega
+la instanciacion concreta en el creador correspondiente. Agregar un
+contaminante nuevo se reduce a registrar su `MedicionCreator` aqui
+(OCP) — ni el repositorio ni el controller cambian.
 """
 
 from src.exceptions.custom_exceptions import DatoInvalidoError
-from src.models.medicion_calidad_aire import (
-    MedicionCalidadAire,
-    MedicionCalidadAirePM,
-)
+from src.factories.medicion_creator import MedicionCreator, PMCreator
+from src.models.medicion_calidad_aire import MedicionCalidadAire
 
 
 class MedicionFactory:
-    """Factory unica para mediciones de calidad del aire."""
+    """Fachada del registro: traduce un `tipo` al creador concreto."""
 
-    _tipos: dict[str, type[MedicionCalidadAire]] = {
-        "PM": MedicionCalidadAirePM,
+    _creators: dict[str, MedicionCreator] = {
+        "PM": PMCreator(),
     }
 
     @classmethod
-    def registrar(cls, tipo: str, clase: type[MedicionCalidadAire]) -> None:
-        """Registra (o reemplaza) la clase concreta asociada a un tipo."""
-        cls._tipos[tipo] = clase
+    def registrar(cls, tipo: str, creator: MedicionCreator) -> None:
+        """Registra (o reemplaza) el creador asociado a un tipo."""
+        cls._creators[tipo] = creator
 
     @classmethod
     def tipos_disponibles(cls) -> list[str]:
-        return sorted(cls._tipos)
+        return sorted(cls._creators)
 
     @classmethod
-    def resolver(cls, tipo: str) -> type[MedicionCalidadAire]:
-        """Devuelve la subclase concreta correspondiente al `tipo`."""
-        clase = cls._tipos.get(tipo)
-        if clase is None:
+    def resolver(cls, tipo: str) -> MedicionCreator:
+        """Devuelve el creador concreto correspondiente al `tipo`."""
+        creator = cls._creators.get(tipo)
+        if creator is None:
             raise DatoInvalidoError(
                 f"Tipo de medicion desconocido: {tipo!r}. "
                 f"Registrados: {cls.tipos_disponibles()}"
             )
-        return clase
+        return creator
 
     @classmethod
     def crear(cls, tipo: str, **datos) -> MedicionCalidadAire:
-        """Instancia una medicion a partir de campos sueltos."""
-        return cls.resolver(tipo)(**datos)
+        """Instancia una medicion delegando en el creador del tipo."""
+        return cls.resolver(tipo).crear(**datos)
 
     @classmethod
     def desde_dict(cls, data: dict) -> MedicionCalidadAire:
@@ -54,4 +52,4 @@ class MedicionFactory:
             tipo = "PM"
         if not tipo:
             raise DatoInvalidoError("Item de medicion sin campo 'tipo'")
-        return cls.resolver(tipo).from_dict(data)
+        return cls.resolver(tipo).desde_dict(data)
