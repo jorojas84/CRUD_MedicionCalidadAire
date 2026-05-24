@@ -1,11 +1,74 @@
 [
     {
-        "id_medicion": "1",
-        "id_estacion": "id1",
-        "contaminante": "contaminante uno",
-        "valor": 11.0,
-        "unidad": "unidad",
-        "fecha": "2026-05-23",
-        "nivel": "Bajo"
+        "id": "A001",
+        "codigo_dane_municipio": "05001",
+        "id_estacion": "EST-MED-01",
+        "fecha": "2026-05-20T08:00:00",
+        "tipo": "PM",
+        "medicion": 42.5,
+        "nivel": "Buena",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM10"
+    },
+    {
+        "id": "A002",
+        "codigo_dane_municipio": "05001",
+        "id_estacion": "EST-MED-01",
+        "fecha": "2026-05-20T14:00:00",
+        "tipo": "PM",
+        "medicion": 115.0,
+        "nivel": "Aceptable",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM10"
+    },
+    {
+        "id": "A003",
+        "codigo_dane_municipio": "05001",
+        "id_estacion": "EST-MED-02",
+        "fecha": "2026-05-21T09:30:00",
+        "tipo": "PM",
+        "medicion": 28.4,
+        "nivel": "Aceptable",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM2.5"
+    },
+    {
+        "id": "A004",
+        "codigo_dane_municipio": "11001",
+        "id_estacion": "EST-BOG-01",
+        "fecha": "2026-05-22T07:00:00",
+        "tipo": "PM",
+        "medicion": 270.0,
+        "nivel": "Daniña a la salud",
+        "origen": "AUTOMATICO",
+        "observacion": "",
+        "diametro_aerodinamico": "PM10"
+    },
+    {
+        "id": "M001",
+        "codigo_dane_municipio": "05001",
+        "id_estacion": "EST-MED-01",
+        "fecha": "2026-05-19T10:00:00",
+        "tipo": "PM",
+        "medicion": 75.2,
+        "nivel": "Aceptable",
+        "origen": "MANUAL",
+        "observacion": "Medicion agregada manualmente",
+        "diametro_aerodinamico": "PM10"
+    },
+    {
+        "id": "M002",
+        "codigo_dane_municipio": "11001",
+        "id_estacion": "EST-BOG-01",
+        "fecha": "2026-05-22T18:00:00",
+        "tipo": "PM",
+        "medicion": 12.1,
+        "nivel": "Aceptable",
+        "origen": "MANUAL",
+        "observacion": "Medicion agregada manualmente",
+        "diametro_aerodinamico": "PM2.5"
     }
 ]

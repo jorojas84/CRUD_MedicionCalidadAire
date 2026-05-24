@@ -1,67 +1,129 @@
-"""Repositorio JSON para CRUD de mediciones de calidad del aire."""
+"""Persistencia de mediciones en un archivo JSON local."""
 
 import json
+from abc import ABC, abstractmethod
 from pathlib import Path
 
-from src.exceptions.custom_exceptions import RegistroDuplicadoError, RegistroNoEncontradoError
+from src.exceptions.custom_exceptions import (
+    ArchivoInvalidoError,
+    DatoInvalidoError,
+    RegistroDuplicadoError,
+    RegistroNoEncontradoError,
+)
+from src.factories.medicion_factory import MedicionFactory
 from src.models.medicion_calidad_aire import MedicionCalidadAire
 
 
-class MedicionCalidadAireRepository:
-    """Gestiona persistencia de mediciones en JSON."""
+def _canonical_id(valor) -> str:
+    """Forma canonica de un id: sin espacios y en mayusculas."""
+    if valor is None:
+        return ""
+    return str(valor).strip().upper()
 
-    def __init__(self, data_file=None):
-        default_path = Path(__file__).resolve().parents[2] / "data" / "mediciones.json"
-        self.data_file = Path(data_file) if data_file else default_path
+
+def _deserializar_medicion(item: dict) -> MedicionCalidadAire:
+    """Reconstruye una medicion desde un dict del JSON."""
+    try:
+        return MedicionFactory.desde_dict(item)
+    except DatoInvalidoError as e:
+        raise ArchivoInvalidoError(str(e)) from e
+
+
+class IMedicionRepository(ABC):
+    """Contrato CRUD para la persistencia de mediciones."""
+
+    @abstractmethod
+    def crear_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire: ...
+
+    @abstractmethod
+    def listar_mediciones(self) -> list[MedicionCalidadAire]: ...
+
+    @abstractmethod
+    def buscar_medicion_por_id(self, medicion_id: str) -> MedicionCalidadAire | None: ...
+
+    @abstractmethod
+    def actualizar_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire: ...
+
+    @abstractmethod
+    def eliminar_medicion(self, medicion_id: str) -> bool: ...
+
+
+class MedicionRepository(IMedicionRepository):
+    """Repositorio respaldado por un archivo JSON en `data/mediciones.json`."""
+
+    _RUTA_POR_DEFECTO: Path = (
+        Path(__file__).resolve().parents[2] / "data" / "mediciones.json"
+    )
+
+    def __init__(self, data_file: str | Path | None = None) -> None:
+        self._data_file = Path(data_file) if data_file else self._RUTA_POR_DEFECTO
         self._asegurar_archivo()
 
-    def _asegurar_archivo(self):
-        self.data_file.parent.mkdir(parents=True, exist_ok=True)
-        if not self.data_file.exists():
-            self._guardar_json([])
-
-    def _leer_json(self):
-        try:
-            with self.data_file.open("r", encoding="utf-8") as file:
-                data = json.load(file)
-                return data if isinstance(data, list) else []
-        except (json.JSONDecodeError, FileNotFoundError):
-            return []
-
-    def _guardar_json(self, data):
-        with self.data_file.open("w", encoding="utf-8") as file:
-            json.dump(data, file, indent=4, ensure_ascii=False)
-
-    def crear(self, medicion):
-        if self.buscar_por_id(medicion.id_medicion):
-            raise RegistroDuplicadoError(f"Ya existe una medicion con id {medicion.id_medicion}")
+    def crear_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire:
+        if self.buscar_medicion_por_id(medicion.id) is not None:
+            raise RegistroDuplicadoError(
+                f"Ya existe una medicion con id {medicion.id}"
+            )
         data = self._leer_json()
         data.append(medicion.to_dict())
         self._guardar_json(data)
         return medicion
 
-    def listar(self):
-        return [MedicionCalidadAire.from_dict(item) for item in self._leer_json()]
+    def listar_mediciones(self) -> list[MedicionCalidadAire]:
+        return [_deserializar_medicion(item) for item in self._leer_json()]
 
-    def buscar_por_id(self, id_medicion):
+    def buscar_medicion_por_id(self, medicion_id: str) -> MedicionCalidadAire | None:
+        clave = _canonical_id(medicion_id)
         for item in self._leer_json():
-            if item.get("id_medicion") == id_medicion:
-                return MedicionCalidadAire.from_dict(item)
+            if _canonical_id(item.get("id")) == clave:
+                return _deserializar_medicion(item)
         return None
 
-    def actualizar(self, id_medicion, medicion_actualizada):
+    def actualizar_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire:
         data = self._leer_json()
-        for index, item in enumerate(data):
-            if item.get("id_medicion") == id_medicion:
-                data[index] = medicion_actualizada.to_dict()
+        clave = _canonical_id(medicion.id)
+        for idx, item in enumerate(data):
+            if _canonical_id(item.get("id")) == clave:
+                data[idx] = medicion.to_dict()
                 self._guardar_json(data)
-                return medicion_actualizada
-        raise RegistroNoEncontradoError(f"No se encontro medicion con id {id_medicion}")
+                return medicion
+        raise RegistroNoEncontradoError(
+            f"No se encontro medicion con id {medicion.id}"
+        )
 
-    def eliminar(self, id_medicion):
-        data = self._leer_json()
-        filtradas = [item for item in data if item.get("id_medicion") != id_medicion]
-        if len(filtradas) == len(data):
-            raise RegistroNoEncontradoError(f"No se encontro medicion con id {id_medicion}")
-        self._guardar_json(filtradas)
+    def eliminar_medicion(self, medicion_id: str) -> bool:
+        """Elimina la medicion solo si su origen lo permite."""
+        medicion = self.buscar_medicion_por_id(medicion_id)
+        if medicion is None:
+            raise RegistroNoEncontradoError(
+                f"No se encontro medicion con id {medicion_id}"
+            )
+        if not medicion.es_eliminable():
+            raise DatoInvalidoError(
+                "Solo se pueden eliminar mediciones MANUALES. "
+                f"Origen: {medicion.origen}"
+            )
+        clave = _canonical_id(medicion_id)
+        data = [
+            item for item in self._leer_json()
+            if _canonical_id(item.get("id")) != clave
+        ]
+        self._guardar_json(data)
         return True
+
+    def _asegurar_archivo(self) -> None:
+        self._data_file.parent.mkdir(parents=True, exist_ok=True)
+        if not self._data_file.exists():
+            self._guardar_json([])
+
+    def _leer_json(self) -> list[dict]:
+        try:
+            with self._data_file.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+        return data if isinstance(data, list) else []
+
+    def _guardar_json(self, data: list[dict]) -> None:
+        with self._data_file.open("w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)

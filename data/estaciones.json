@@ -1,9 +1,30 @@
 [
     {
-        "id_estacion": "1",
-        "nombre": "uno",
-        "municipio": "municipio uno",
-        "tipo_estacion": "estación uno",
+        "id_estacion": "EST-MED-01",
+        "nombre": "Estacion Centro Medellin",
+        "municipio": "05001",
+        "tipo_estacion": "Fija",
+        "estado": "Activa"
+    },
+    {
+        "id_estacion": "EST-MED-02",
+        "nombre": "Estacion Norte Medellin",
+        "municipio": "05001",
+        "tipo_estacion": "Fija",
+        "estado": "Activa"
+    },
+    {
+        "id_estacion": "EST-BOG-01",
+        "nombre": "Estacion Centro Bogota",
+        "municipio": "11001",
+        "tipo_estacion": "Fija",
+        "estado": "Activa"
+    },
+    {
+        "id_estacion": "EST-CAL-01",
+        "nombre": "Estacion Centro Cali",
+        "municipio": "76001",
+        "tipo_estacion": "Movil",
         "estado": "Activa"
     }
 ]
