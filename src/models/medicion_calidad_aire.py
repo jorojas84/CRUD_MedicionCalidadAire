@@ -1,12 +1,9 @@
 """Modelo de mediciones de calidad del aire (Res. 2254 de 2017).
 
-Clase base abstracta del dominio. Antes existia una `Medicion` generica
-encima, pensando en otros tipos de medicion (ruido, agua...). El
-observatorio solo trabaja con calidad del aire, asi que se colapso esa
-jerarquia: la base ahora es directamente `MedicionCalidadAire` y cada
-contaminante criterio (PM10/PM2.5, CO, SO2, NO2, O3...) se modela como
-una subclase concreta. Si en el futuro hace falta medir otro dominio,
-se extraera una clase base entonces (YAGNI hasta ese momento).
+Define la entidad base abstracta `MedicionCalidadAire` y una subclase
+concreta por contaminante criterio. Cada subclase aporta sus propios
+puntos de corte ICA; la base se encarga de la validacion comun y de
+clasificar el nivel a partir del valor medido.
 """
 
 from abc import ABC, abstractmethod
@@ -17,14 +14,7 @@ from src.exceptions.custom_exceptions import DatoInvalidoError
 
 
 class MedicionCalidadAire(ABC):
-    """Lectura de un contaminante criterio tomada en una estacion.
-
-    Define la identidad y los datos comunes (id, municipio, estacion,
-    fecha, valor, origen) y la clasificacion ICA comun a todos los
-    contaminantes. Delega en las subclases solo los puntos de corte
-    propios de cada contaminante (OCP: agregar uno nuevo no obliga a
-    modificar esta clase).
-    """
+    """Lectura de un contaminante tomada en una estacion."""
 
     # Origen del dato
     PENDIENTE: ClassVar[str] = "Pendiente"
@@ -32,14 +22,16 @@ class MedicionCalidadAire(ABC):
     AUTO: ClassVar[str] = "AUTOMATICO"
     ORIGENES_VALIDOS: ClassVar[tuple] = (MANUAL, AUTO)
 
-    # Categorias del Indice de Calidad del Aire (Res. 2254/2017, Tabla 6)
-    # https://www.minambiente.gov.co/wp-content/uploads/2021/10/Resolucion-2254-de-2017.pdf
+    # Categorias ICA (Res. 2254/2017, Tabla 6).
     BUENA: ClassVar[str] = "Buena"
     ACEPTABLE: ClassVar[str] = "Aceptable"
     DANINA_SENSIBLES: ClassVar[str] = "Daniña a la salud de grupos sensibles"
     DANINA: ClassVar[str] = "Daniña a la salud"
     MUY_DANINA: ClassVar[str] = "Muy daniña a la salud"
     PELIGROSA: ClassVar[str] = "Peligrosa"
+
+    # Identificador del contaminante (lo sobrescribe cada subclase).
+    TIPO: ClassVar[str] = ""
 
     def __init__(
         self,
@@ -58,7 +50,6 @@ class MedicionCalidadAire(ABC):
         self._origen = origen
         self._validar_datos()
 
-    # ── acceso de solo lectura ───────────────────────────────────────
     @property
     def id(self) -> str:
         return self._id
@@ -83,7 +74,6 @@ class MedicionCalidadAire(ABC):
     def origen(self) -> str:
         return self._origen
 
-    # ── validacion de invariantes ────────────────────────────────────
     def _validar_datos(self) -> None:
         if not self._id:
             raise DatoInvalidoError("id no puede estar vacio")
@@ -93,7 +83,7 @@ class MedicionCalidadAire(ABC):
             raise DatoInvalidoError("id_estacion no puede estar vacio")
         if not isinstance(self._fecha, datetime):
             raise DatoInvalidoError("fecha debe ser datetime")
-        if self._medicion is None or not isinstance(self._medicion, (int, float)):
+        if not isinstance(self._medicion, (int, float)):
             raise DatoInvalidoError("medicion debe ser numerica")
         if self._medicion <= 0:
             raise DatoInvalidoError("medicion debe ser positiva")
@@ -103,21 +93,16 @@ class MedicionCalidadAire(ABC):
                 f"Validos: {self.ORIGENES_VALIDOS}"
             )
 
-    # ── contrato que deben cumplir las subclases ─────────────────────
     @property
     @abstractmethod
     def _puntos_corte(self) -> list[tuple[float, str]]:
-        """Puntos de corte ICA del contaminante.
-
-        Lista ordenada de `(limite_superior, categoria_ICA)`.
-        """
+        """Lista ordenada de (limite_superior, categoria_ICA)."""
 
     @classmethod
     @abstractmethod
     def from_dict(cls, data: dict) -> "MedicionCalidadAire":
-        """Reconstruye una instancia desde su representacion serializada."""
+        """Reconstruye una instancia desde su forma serializada."""
 
-    # ── derivados comunes a toda subclase ────────────────────────────
     @property
     def nivel(self) -> str:
         """Categoria ICA correspondiente al valor medido."""
@@ -133,7 +118,7 @@ class MedicionCalidadAire(ABC):
         return ""
 
     def es_eliminable(self) -> bool:
-        """Solo las mediciones manuales pueden eliminarse del repositorio."""
+        """Las mediciones automaticas son inmutables; solo se borran las manuales."""
         return self._origen == self.MANUAL
 
     def to_dict(self) -> dict:
@@ -142,6 +127,7 @@ class MedicionCalidadAire(ABC):
             "codigo_dane_municipio": self._codigo_dane_municipio,
             "id_estacion": self._id_estacion,
             "fecha": self._fecha.isoformat(),
+            "tipo": type(self).TIPO,
             "medicion": self._medicion,
             "nivel": self.nivel,
             "origen": self._origen,
@@ -152,11 +138,12 @@ class MedicionCalidadAire(ABC):
 class MedicionCalidadAirePM(MedicionCalidadAire):
     """Material particulado PM10 y PM2.5 (promedio 24h)."""
 
+    TIPO: ClassVar[str] = "PM"
     PM10: ClassVar[str] = "PM10"
     PM25: ClassVar[str] = "PM2.5"
     DIAMETROS_VALIDOS: ClassVar[tuple] = (PM10, PM25)
 
-    # Puntos de corte del ICA — Res. 2254/2017 Tabla 6 (µg/m³, 24h).
+    # Puntos de corte ICA por diametro (Res. 2254/2017, Tabla 6, µg/m³).
     _PUNTOS_CORTE: ClassVar[dict] = {
         PM10: [
             (54, MedicionCalidadAire.BUENA),
@@ -186,8 +173,7 @@ class MedicionCalidadAirePM(MedicionCalidadAire):
         medicion: float,
         origen: str = MedicionCalidadAire.AUTO,
     ) -> None:
-        # Se asigna antes del super().__init__ porque _validar_datos
-        # (invocado al final del __init__ base) ya lo necesita.
+        # Se asigna antes del super().__init__ porque _validar_datos lo necesita.
         self._diametro_aerodinamico = diametro_aerodinamico
         super().__init__(
             id, codigo_dane_municipio, id_estacion, fecha, medicion, origen

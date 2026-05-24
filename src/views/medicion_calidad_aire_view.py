@@ -1,114 +1,140 @@
 """Vista de consola para mediciones (capa V del patron MVC).
 
-La vista es el unico punto del sistema que interactua con el usuario:
-imprime resultados y, opcionalmente, recoge entradas. No contiene
-reglas de dominio ni accede al repositorio: solo recibe entidades
-`Medicion` (o mensajes simples) desde el controller y las presenta.
-
-Diseño:
-
-- **SRP**: formateo y E/S estan separados (`_formatear_*` arma strings;
-  `_print` los emite). Eso hace la vista testeable sin capturar stdout.
-- **OCP/polimorfismo**: `show_mediciones` no asume ninguna subclase
-  concreta. Itera sobre `Medicion.to_dict()` —que es polimorfico— y
-  renderiza los campos comunes en columnas + los campos extra (p. ej.
-  `diametro_aerodinamico` de PM) como detalles. Sumar un contaminante
-  nuevo no obliga a tocar esta clase.
-- **DIP**: el controller depende de esta vista (o de otra equivalente).
-  Para una vista web/GUI/tests basta con respetar la misma interfaz
-  publica (`show_message`, `show_error`, `show_mediciones`, prompts).
+Unica capa que interactua con el usuario: muestra resultados y recoge
+entradas. No accede al repositorio ni contiene reglas de dominio.
 """
 
 from datetime import datetime
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from src.models.medicion_calidad_aire import MedicionCalidadAire
+from src.repositories.estacion_repository import EstacionRepository
+from src.repositories.municipio_repository import MunicipioRepository
+
+if TYPE_CHECKING:
+    from src.controllers.medicion_calidad_aire_controller import MedicionController
 
 
-# Campos comunes a toda `MedicionCalidadAire` (orden en el que se muestran).
-# Todo lo que la subclase agregue en `to_dict()` aparece como "detalle".
-_CAMPOS_COMUNES: tuple[str, ...] = (
-    "id", "codigo_dane_municipio", "id_estacion",
-    "fecha", "medicion", "nivel", "origen",
-)
-# Claves que `to_dict` incluye pero no aportan a la columna "detalles".
-_CAMPOS_OMITIDOS_EN_DETALLES: frozenset[str] = frozenset(
-    {*_CAMPOS_COMUNES, "observacion", "tipo"}
-)
+class MedicionCalidadAireView:
+    """Interfaz de consola para el CRUD de mediciones."""
 
+    def __init__(self, controller: Optional["MedicionController"] = None):
+        self.controller: "MedicionController" = controller  # type: ignore[assignment]
 
-class MedicionView:
-    """Adaptador de consola: presenta mediciones e interactua con el usuario."""
+    def mostrar_menu(self) -> None:
+        self._asegurar_controller()
+        while True:
+            print("\n--- Menu Mediciones ---")
+            print("1. Crear medicion (manual)")
+            print("2. Listar mediciones")
+            print("3. Actualizar medicion")
+            print("4. Eliminar medicion")
+            print("5. Recalcular niveles")
+            print("6. Volver")
+            opcion = input("Seleccione una opcion: ").strip()
+            if opcion == "1":
+                self._accion_crear()
+            elif opcion == "2":
+                self.controller.listar_mediciones()
+            elif opcion == "3":
+                self._accion_actualizar()
+            elif opcion == "4":
+                self._accion_eliminar()
+            elif opcion == "5":
+                self.controller.calcular_niveles_pendientes()
+            elif opcion == "6":
+                return
+            else:
+                self.show_error("Opcion invalida.")
 
-    # ── salida: mensajes simples ─────────────────────────────────────
+    def _asegurar_controller(self) -> None:
+        """Construye el controller con dependencias por defecto si no fue inyectado."""
+        if self.controller is not None:
+            return
+        from src.controllers.medicion_calidad_aire_controller import MedicionController
+        from src.repositories.medicion_calidad_aire_repository import MedicionRepository
+        self.controller = MedicionController(MedicionRepository(), self)
+
+    # ── acciones del menu ────────────────────────────────────────────
+    def _accion_crear(self) -> None:
+        tipo = self.pedir_opcion("Tipo", ["PM"])
+        if tipo is None:
+            return
+        medicion_id = self.pedir_texto("ID medicion")
+        if not medicion_id:
+            return self.show_error("ID es obligatorio.")
+        codigo_dane = self.pedir_texto("Codigo DANE municipio")
+        if not codigo_dane:
+            return self.show_error("Codigo DANE es obligatorio.")
+        if MunicipioRepository().buscar_por_id(codigo_dane) is None:
+            return self.show_error(f"Municipio con codigo DANE {codigo_dane!r} no existe.")
+        id_estacion = self.pedir_texto("ID estacion")
+        if not id_estacion:
+            return self.show_error("ID estacion es obligatorio.")
+        if EstacionRepository().buscar(id_estacion) is None:
+            return self.show_error(f"Estacion {id_estacion!r} no existe.")
+        fecha = self.pedir_fecha("Fecha")
+        if fecha is None:
+            return self.show_error("Fecha requerida.")
+        valor = self.pedir_numero("Valor de medicion")
+        if valor is None:
+            return self.show_error("Valor requerido.")
+
+        extra = {}
+        if tipo == "PM":
+            diametro = self.pedir_opcion("Diametro aerodinamico", ["PM10", "PM2.5"])
+            if diametro is None:
+                return
+            extra["diametro_aerodinamico"] = diametro
+
+        self.controller.crear_medicion(
+            tipo, medicion_id, codigo_dane, id_estacion, fecha, valor, **extra
+        )
+
+    def _accion_actualizar(self) -> None:
+        medicion_id = self.pedir_texto("ID medicion a actualizar")
+        if not medicion_id:
+            return
+        print("(Deje vacio cualquier campo que no desee modificar)")
+        self.controller.actualizar_medicion(
+            medicion_id,
+            codigo_dane_municipio=self.pedir_texto("Nuevo codigo DANE", opcional=True),
+            id_estacion=self.pedir_texto("Nuevo ID estacion", opcional=True),
+            fecha=self.pedir_fecha("Nueva fecha"),
+            medicion=self.pedir_numero("Nuevo valor"),
+        )
+
+    def _accion_eliminar(self) -> None:
+        medicion_id = self.pedir_texto("ID medicion a eliminar")
+        if medicion_id:
+            self.controller.eliminar_medicion(medicion_id)
+
+    # ── salida ───────────────────────────────────────────────────────
     def show_message(self, mensaje: str) -> None:
-        self._print(f"[OK] {mensaje}")
+        print(f"[OK] {mensaje}")
 
     def show_error(self, mensaje: str) -> None:
-        self._print(f"[ERROR] {mensaje}")
+        print(f"[ERROR] {mensaje}")
 
-    # ── salida: listado polimorfico de mediciones ────────────────────
     def show_mediciones(self, mediciones: Iterable[MedicionCalidadAire]) -> None:
         mediciones = list(mediciones)
         if not mediciones:
-            self._print("No hay mediciones registradas.")
+            print("No hay mediciones registradas.")
             return
-        for linea in self._formatear_tabla(mediciones):
-            self._print(linea)
-
-    def _formatear_tabla(self, mediciones: list[MedicionCalidadAire]) -> list[str]:
-        """Arma el listado tabular (sin imprimir). Aislado para testear."""
-        encabezado = (
-            f"{'ID':<12} {'COD_DANE':<10} {'ID_ESTACION':<14} "
-            f"{'FECHA':<20} {'VALOR':<8} {'NIVEL':<35} "
-            f"{'ORIGEN':<11} DETALLES"
-        )
-        lineas = [encabezado, "-" * len(encabezado)]
         for m in mediciones:
-            lineas.append(self._formatear_fila(m))
-        return lineas
+            print(m.to_dict())
 
-    def _formatear_fila(self, m: MedicionCalidadAire) -> str:
-        datos = m.to_dict()
-        detalles = self._formatear_detalles(datos)
-        fecha_str = self._formatear_fecha(datos.get("fecha"))
-        return (
-            f"{str(datos.get('id', '')):<12} "
-            f"{str(datos.get('codigo_dane_municipio', '')):<10} "
-            f"{str(datos.get('id_estacion', '')):<14} "
-            f"{fecha_str:<20} "
-            f"{str(datos.get('medicion', '')):<8} "
-            f"{str(datos.get('nivel', '')):<35} "
-            f"{str(datos.get('origen', '')):<11} "
-            f"{detalles}"
-        )
-
-    def _formatear_detalles(self, datos: dict) -> str:
-        """Resume los campos especificos de la subclase (OCP)."""
-        extras = {
-            k: v for k, v in datos.items()
-            if k not in _CAMPOS_OMITIDOS_EN_DETALLES
-        }
-        if not extras:
-            return ""
-        return ", ".join(f"{k}={v}" for k, v in extras.items())
-
-    def _formatear_fecha(self, fecha) -> str:
-        if isinstance(fecha, datetime):
-            return fecha.isoformat()
-        return str(fecha) if fecha is not None else ""
-
-    # ── entrada: prompts coherentes con la firma del controller ──────
+    # ── prompts de entrada ───────────────────────────────────────────
     def pedir_texto(self, etiqueta: str, opcional: bool = False) -> Optional[str]:
         valor = input(f"{etiqueta}: ").strip()
         if not valor:
             return None if opcional else ""
         return valor
 
-    def pedir_numero(self, etiqueta: str, opcional: bool = False) -> Optional[float]:
+    def pedir_numero(self, etiqueta: str) -> Optional[float]:
         crudo = input(f"{etiqueta}: ").strip()
         if not crudo:
-            return None if opcional else 0.0
+            return None
         try:
             return float(crudo)
         except ValueError:
@@ -132,7 +158,3 @@ class MedicionView:
             self.show_error(f"Opcion invalida: {crudo!r}. Validas: {opciones}")
             return None
         return crudo
-
-    # ── E/S de bajo nivel (punto unico para testear/mockear) ─────────
-    def _print(self, linea: str) -> None:
-        print(linea)

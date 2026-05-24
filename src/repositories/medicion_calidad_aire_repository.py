@@ -1,10 +1,4 @@
-"""Persistencia de mediciones en un archivo JSON.
-
-Sigue el patron Repository: oculta el medio de almacenamiento detras de
-una interfaz (`IMedicionRepository`) para que el resto del sistema (en
-particular el Controller de MVC) dependa de la abstraccion y no del
-mecanismo concreto de persistencia (DIP).
-"""
+"""Persistencia de mediciones en un archivo JSON local."""
 
 import json
 from abc import ABC, abstractmethod
@@ -16,33 +10,20 @@ from src.exceptions.custom_exceptions import (
     RegistroDuplicadoError,
     RegistroNoEncontradoError,
 )
-from src.models.medicion_calidad_aire import (
-    MedicionCalidadAire,
-    MedicionCalidadAirePM,
-)
-
-
-# Registro de tipos concretos soportados al deserializar.
-# Para sumar un contaminante (CO, SO2, NO2, O3...) basta con registrarlo
-# aqui sin tocar el resto del repositorio (OCP).
-_TIPOS_MEDICION: dict[str, type[MedicionCalidadAire]] = {
-    "PM": MedicionCalidadAirePM,
-}
+from src.factories.medicion_factory import MedicionFactory
+from src.models.medicion_calidad_aire import MedicionCalidadAire
 
 
 def _deserializar_medicion(item: dict) -> MedicionCalidadAire:
-    """Crea la subclase concreta que corresponda al dict."""
-    tipo = item.get("tipo")
-    if not tipo and "diametro_aerodinamico" in item:
-        tipo = "PM"
-    cls = _TIPOS_MEDICION.get(tipo) if tipo else None
-    if cls is None:
-        raise ArchivoInvalidoError(f"Tipo de medicion desconocido: {tipo!r}")
-    return cls.from_dict(item)
+    """Reconstruye una medicion desde un dict del JSON."""
+    try:
+        return MedicionFactory.desde_dict(item)
+    except DatoInvalidoError as e:
+        raise ArchivoInvalidoError(str(e)) from e
 
 
 class IMedicionRepository(ABC):
-    """Contrato CRUD que debe cumplir cualquier implementacion de persistencia."""
+    """Contrato CRUD para la persistencia de mediciones."""
 
     @abstractmethod
     def crear_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire: ...
@@ -61,7 +42,7 @@ class IMedicionRepository(ABC):
 
 
 class MedicionRepository(IMedicionRepository):
-    """Implementacion del repositorio sobre un archivo JSON local."""
+    """Repositorio respaldado por un archivo JSON en `data/mediciones.json`."""
 
     _RUTA_POR_DEFECTO: Path = (
         Path(__file__).resolve().parents[2] / "data" / "mediciones.json"
@@ -71,7 +52,6 @@ class MedicionRepository(IMedicionRepository):
         self._data_file = Path(data_file) if data_file else self._RUTA_POR_DEFECTO
         self._asegurar_archivo()
 
-    # ── operaciones del repositorio ──────────────────────────────────
     def crear_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire:
         if self.buscar_medicion_por_id(medicion.id) is not None:
             raise RegistroDuplicadoError(
@@ -103,7 +83,7 @@ class MedicionRepository(IMedicionRepository):
         )
 
     def eliminar_medicion(self, medicion_id: str) -> bool:
-        """Elimina la medicion solo si su origen lo permite (regla del modelo)."""
+        """Elimina la medicion solo si su origen lo permite."""
         medicion = self.buscar_medicion_por_id(medicion_id)
         if medicion is None:
             raise RegistroNoEncontradoError(
@@ -114,14 +94,10 @@ class MedicionRepository(IMedicionRepository):
                 "Solo se pueden eliminar mediciones MANUALES. "
                 f"Origen: {medicion.origen}"
             )
-        data = [
-            item for item in self._leer_json()
-            if item.get("id") != medicion_id
-        ]
+        data = [item for item in self._leer_json() if item.get("id") != medicion_id]
         self._guardar_json(data)
         return True
 
-    # ── E/S del archivo JSON ─────────────────────────────────────────
     def _asegurar_archivo(self) -> None:
         self._data_file.parent.mkdir(parents=True, exist_ok=True)
         if not self._data_file.exists():
