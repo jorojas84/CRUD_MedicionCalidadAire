@@ -1,0 +1,91 @@
+# Evidencia Individual - Jose
+
+- **Entidad:** `MedicionCalidadAire` (clase base abstracta) +
+  `MedicionCalidadAirePM` (subclase concreta para PM10 / PM2.5).
+
+## Archivos principales
+
+- `src/models/medicion_calidad_aire.py` — modelo polimorfico de mediciones.
+- `src/repositories/medicion_calidad_aire_repository.py` — persistencia JSON.
+- `src/controllers/medicion_calidad_aire_controller.py` — casos de uso.
+- `src/views/medicion_calidad_aire_view.py` — menu de consola y prompts.
+- `src/factories/medicion_creator.py` — `MedicionCreator` (ABC) y
+  `PMCreator` concreto: jerarquia paralela a la de productos
+  (Factory Method de GoF).
+- `src/factories/medicion_factory.py` — registro `tipo -> MedicionCreator`
+  que delega la instanciacion en el creador correspondiente.
+- `data/mediciones.json` — datos de ejemplo (4 AUTOMATICAS + 3 MANUALES).
+- `tests/test_medicion_repository.py` — pruebas del repositorio (10).
+- `tests/test_medicion_modelo.py` — pruebas del modelo: clasificacion ICA y
+  validaciones (10).
+- `tests/test_medicion_controller.py` — pruebas del controller con vista
+  stub (10).
+
+## Reglas de negocio
+
+- **Clasificacion ICA** segun Res. 2254/2017 (Tabla 6). Cada subclase
+  declara sus propios puntos de corte; la base resuelve el nivel con la
+  misma logica. Categorias: `Buena`, `Aceptable`,
+  `Daniña a la salud de grupos sensibles`, `Daniña a la salud`,
+  `Muy daniña a la salud`, `Peligrosa`.
+- **Origen del dato:** una medicion es `MANUAL` (creada por el usuario)
+  o `AUTOMATICO` (proveniente del sensor). Las automaticas son
+  inmutables y no pueden actualizarse ni eliminarse.
+- **Integridad referencial:** al crear una medicion manual la vista
+  valida en linea que el `codigo_dane_municipio` y el `id_estacion`
+  existan en sus respectivos repositorios.
+- **Validaciones del modelo:** id, codigo DANE e id estacion no vacios;
+  fecha tipo `datetime`; valor numerico positivo; origen valido.
+- **Reintento por campo en crear manual:** si un campo es invalido la
+  vista vuelve a pedirlo conservando los previos (no se pierde el
+  progreso). El usuario puede abortar en cualquier prompt escribiendo
+  `cancelar`.
+- **IDs case/space-insensitive:** los IDs de medicion, municipio y
+  estacion se canonicalizan a `strip().upper()` tanto al crear como al
+  buscar, asi que `" m001 "`, `"M001"` y `"m001"` apuntan al mismo
+  registro. La normalizacion se aplica en vista, controller y
+  repositorio.
+
+## Patrones aplicados
+
+- **MVC:** modelo, vista y controlador separados.
+- **Repository:** `IMedicionRepository` define el contrato CRUD;
+  `MedicionRepository` lo implementa sobre JSON.
+- **Factory Method (GoF):** jerarquia abstracta `MedicionCreator` con
+  un creador concreto por contaminante (`PMCreator`). `MedicionFactory`
+  mantiene el registro `tipo -> creador` y delega la instanciacion en el
+  creador correspondiente. Agregar un contaminante nuevo (SO2, NO2, CO,
+  O3...) solo requiere crear su `MedicionCreator` concreto y registrarlo
+  en la factory (OCP).
+
+## Datos de ejemplo
+
+`data/mediciones.json` ya trae 7 registros listos para probar el menu:
+4 automaticas y 3 manuales sobre municipios `05001` (Medellin), `11001`
+(Bogota) y `76001` (Cali), con sus estaciones correspondientes en
+`data/estaciones.json` y `data/municipios.json`.
+
+## Como ejecutar
+
+```bash
+python -m src.main
+```
+
+Luego seleccionar la opcion **3. Modulo Mediciones**. El menu permite:
+
+1. Crear medicion (manual) — valida tipo, municipio, estacion, fecha y
+   valor; reintento in-situ por campo y `cancelar` para abortar.
+2. Listar mediciones.
+3. Actualizar medicion — solo MANUALES.
+4. Eliminar medicion — solo MANUALES.
+5. Volver.
+
+## Evidencias a adjuntar
+
+1. Pantallazo del CRUD en consola (crear/listar/actualizar/eliminar).
+2. Pantallazo de `pytest -v` mostrando las **30 pruebas** del modulo
+   de mediciones pasando.
+
+```bash
+pytest tests/test_medicion_repository.py tests/test_medicion_modelo.py tests/test_medicion_controller.py -v
+```
