@@ -14,5 +14,13 @@
         "descripcion": "Alto Nivel",
         "fecha": "2026-05-23",
         "estado": "Activa"
+    },
+    {
+        "id_alerta": "ALT-900",
+        "id_medicion": "MED-900",
+        "nivel": "Alto",
+        "descripcion": "Prueba manual",
+        "fecha": "2026-05-24",
+        "estado": "Activa"
     }
 ]
