@@ -1,1 +1,23 @@
-[]
+[
+    {
+        "id_municipio": "05001",
+        "nombre": "Medellin",
+        "departamento": "Antioquia",
+        "region": "Andina",
+        "estado": "Activo"
+    },
+    {
+        "id_municipio": "11001",
+        "nombre": "Bogota D.C.",
+        "departamento": "Cundinamarca",
+        "region": "Andina",
+        "estado": "Activo"
+    },
+    {
+        "id_municipio": "76001",
+        "nombre": "Cali",
+        "departamento": "Valle del Cauca",
+        "region": "Pacifica",
+        "estado": "Activo"
+    }
+]
