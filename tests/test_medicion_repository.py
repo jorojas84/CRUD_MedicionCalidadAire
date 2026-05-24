@@ -1,94 +1,100 @@
-"""Pruebas unitarias para MedicionCalidadAireRepository."""
+"""Pruebas unitarias para MedicionRepository."""
+
+from datetime import datetime
 
 import pytest
 
-from src.exceptions.custom_exceptions import DatoInvalidoError, RegistroDuplicadoError
-from src.models.medicion_calidad_aire import MedicionCalidadAire
-from src.repositories.medicion_calidad_aire_repository import MedicionCalidadAireRepository
+from src.exceptions.custom_exceptions import (
+    DatoInvalidoError,
+    RegistroDuplicadoError,
+    RegistroNoEncontradoError,
+)
+from src.models.medicion_calidad_aire import MedicionCalidadAire, MedicionCalidadAirePM
+from src.repositories.medicion_calidad_aire_repository import MedicionRepository
 
 
-def _repo_temporal(tmp_path):
-    return MedicionCalidadAireRepository(data_file=tmp_path / "mediciones_test.json")
+def _repo(tmp_path):
+    return MedicionRepository(data_file=tmp_path / "mediciones_test.json")
 
 
-def _medicion_base(**overrides):
+def _medicion(**overrides) -> MedicionCalidadAirePM:
     data = {
-        "id_medicion": "MED001",
-        "id_estacion": "EST001",
-        "contaminante": "PM2.5",
-        "valor": 35.5,
-        "unidad": "ug/m3",
-        "fecha": "2026-05-24",
+        "id": "M001",
+        "codigo_dane_municipio": "05001",
+        "id_estacion": "EST-MED-01",
+        "fecha": datetime(2026, 5, 20, 10, 0),
+        "diametro_aerodinamico": "PM10",
+        "medicion": 42.5,
+        "origen": MedicionCalidadAire.MANUAL,
     }
     data.update(overrides)
-    return MedicionCalidadAire(**data)
+    return MedicionCalidadAirePM(**data)
 
 
-def test_1_crear_medicion_valida(tmp_path):
-    repo = _repo_temporal(tmp_path)
-    creada = repo.crear(_medicion_base())
-    assert creada.id_medicion == "MED001"
-
-
-def test_2_rechazar_medicion_sin_id(tmp_path):
-    _ = _repo_temporal(tmp_path)
-    with pytest.raises(DatoInvalidoError):
-        _medicion_base(id_medicion="")
-
-
-def test_3_rechazar_medicion_sin_estacion(tmp_path):
-    _ = _repo_temporal(tmp_path)
-    with pytest.raises(DatoInvalidoError):
-        _medicion_base(id_estacion="")
-
-
-def test_4_rechazar_medicion_sin_contaminante(tmp_path):
-    _ = _repo_temporal(tmp_path)
-    with pytest.raises(DatoInvalidoError):
-        _medicion_base(contaminante="")
-
-
-def test_5_rechazar_valor_negativo(tmp_path):
-    _ = _repo_temporal(tmp_path)
-    with pytest.raises(DatoInvalidoError):
-        _medicion_base(valor=-1)
-
-
-def test_6_rechazar_medicion_duplicada(tmp_path):
-    repo = _repo_temporal(tmp_path)
-    repo.crear(_medicion_base())
-    with pytest.raises(RegistroDuplicadoError):
-        repo.crear(_medicion_base())
-
-
-def test_7_buscar_medicion_existente(tmp_path):
-    repo = _repo_temporal(tmp_path)
-    repo.crear(_medicion_base())
-    encontrada = repo.buscar_por_id("MED001")
+def test_1_crear_y_buscar_medicion(tmp_path):
+    repo = _repo(tmp_path)
+    repo.crear_medicion(_medicion())
+    encontrada = repo.buscar_medicion_por_id("M001")
     assert encontrada is not None
+    assert encontrada.medicion == 42.5
 
 
-def test_8_actualizar_valor_medicion(tmp_path):
-    repo = _repo_temporal(tmp_path)
-    repo.crear(_medicion_base())
-    actualizada = _medicion_base(valor=120)
-    repo.actualizar("MED001", actualizada)
-    buscada = repo.buscar_por_id("MED001")
-    assert buscada.valor == 120
+def test_2_listar_mediciones(tmp_path):
+    repo = _repo(tmp_path)
+    repo.crear_medicion(_medicion(id="M001"))
+    repo.crear_medicion(_medicion(id="M002", medicion=80.0))
+    assert len(repo.listar_mediciones()) == 2
 
 
-def test_9_eliminar_medicion(tmp_path):
-    repo = _repo_temporal(tmp_path)
-    repo.crear(_medicion_base())
-    repo.eliminar("MED001")
-    assert repo.buscar_por_id("MED001") is None
+def test_3_rechazar_duplicado(tmp_path):
+    repo = _repo(tmp_path)
+    repo.crear_medicion(_medicion())
+    with pytest.raises(RegistroDuplicadoError):
+        repo.crear_medicion(_medicion())
 
 
-def test_10_calcular_nivel_alerta(tmp_path):
-    _ = _repo_temporal(tmp_path)
-    bajo = _medicion_base(valor=30)
-    medio = _medicion_base(id_medicion="MED002", valor=75)
-    alto = _medicion_base(id_medicion="MED003", valor=150)
-    assert bajo.nivel == "Bajo"
-    assert medio.nivel == "Medio"
-    assert alto.nivel == "Alto"
+def test_4_actualizar_medicion(tmp_path):
+    repo = _repo(tmp_path)
+    repo.crear_medicion(_medicion())
+    repo.actualizar_medicion(_medicion(medicion=120.0))
+    encontrada = repo.buscar_medicion_por_id("M001")
+    assert encontrada.medicion == 120.0
+    assert encontrada.nivel == "Aceptable"
+
+
+def test_5_actualizar_inexistente_falla(tmp_path):
+    repo = _repo(tmp_path)
+    with pytest.raises(RegistroNoEncontradoError):
+        repo.actualizar_medicion(_medicion(id="X999"))
+
+
+def test_6_eliminar_manual(tmp_path):
+    repo = _repo(tmp_path)
+    repo.crear_medicion(_medicion())
+    assert repo.eliminar_medicion("M001") is True
+    assert repo.buscar_medicion_por_id("M001") is None
+
+
+def test_7_no_eliminar_automatica(tmp_path):
+    repo = _repo(tmp_path)
+    repo.crear_medicion(_medicion(origen=MedicionCalidadAire.AUTO))
+    with pytest.raises(DatoInvalidoError):
+        repo.eliminar_medicion("M001")
+
+
+def test_8_eliminar_inexistente_falla(tmp_path):
+    repo = _repo(tmp_path)
+    with pytest.raises(RegistroNoEncontradoError):
+        repo.eliminar_medicion("X999")
+
+
+def test_9_persistencia_entre_instancias(tmp_path):
+    archivo = tmp_path / "mediciones_test.json"
+    MedicionRepository(archivo).crear_medicion(_medicion())
+    otra = MedicionRepository(archivo)
+    assert otra.buscar_medicion_por_id("M001") is not None
+
+
+def test_10_buscar_inexistente_devuelve_none(tmp_path):
+    repo = _repo(tmp_path)
+    assert repo.buscar_medicion_por_id("X999") is None
