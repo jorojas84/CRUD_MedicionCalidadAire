@@ -15,6 +15,7 @@ El proyecto se desarrolla con:
 
 - Patron **MVC** (Model - View - Controller).
 - Patron **Repository/DAO** para persistencia.
+- Patron **Factory** para instanciar mediciones por contaminante (`src/factories/medicion_factory.py`).
 - Archivos **JSON** como almacenamiento local.
 - Validaciones de dominio y excepciones personalizadas.
 
@@ -54,6 +55,7 @@ El menu principal actual permite acceder a:
 - `src/repositories`: acceso a datos en archivos JSON.
 - `src/controllers`: logica de coordinacion entre vistas y repositorios.
 - `src/views`: menus de consola por modulo.
+- `src/factories`: factories para instanciar entidades polimorficas.
 - `src/exceptions`: excepciones personalizadas.
 - `data/`: archivos JSON de persistencia.
 - `tests/`: pruebas unitarias con `pytest`.
@@ -79,11 +81,18 @@ reglas de negocio y pruebas unitarias.
 ### MedicionCalidadAire
 
 - CRUD completo sobre `data/mediciones.json`.
-- Validaciones de campos obligatorios y valor no negativo.
-- Regla de negocio: clasificacion automatica por nivel:
-  - menor a 50: `Bajo`
-  - entre 50 y 100: `Medio`
-  - mayor a 100: `Alto`
+- Modelo polimorfico: clase base abstracta `MedicionCalidadAire` y una
+  subclase por contaminante (actualmente `MedicionCalidadAirePM` para
+  PM10 y PM2.5). Agregar un contaminante nuevo solo requiere registrar
+  su subclase en `MedicionFactory` (OCP).
+- Distincion entre mediciones `MANUAL` (creadas/editables por el
+  usuario) y `AUTOMATICO` (provenientes de sensores; inmutables).
+- Integridad referencial: al crear una medicion se valida que el
+  `codigo_dane_municipio` y el `id_estacion` existan en sus catalogos.
+- Regla de negocio: clasificacion ICA segun Res. 2254/2017 (Tabla 6),
+  con puntos de corte propios por contaminante:
+  `Buena`, `Aceptable`, `Daniña a la salud de grupos sensibles`,
+  `Daniña a la salud`, `Muy daniña a la salud`, `Peligrosa`.
 
 ### AlertaAmbiental
 
@@ -111,9 +120,11 @@ Estado actual de la Actividad 7:
 - 10 pruebas de AlertaAmbiental
 - 10 pruebas de EstacionAmbiental
 - 10 pruebas de Municipio
-- 10 pruebas de MedicionCalidadAire
+- 10 pruebas de MedicionCalidadAire (repositorio)
+- 10 pruebas de MedicionCalidadAire (modelo: clasificacion ICA y validaciones)
+- 10 pruebas de MedicionCalidadAire (controller)
 
-Total: **40 pruebas unitarias**.
+Total: **60 pruebas unitarias**.
 
 ## Integrantes y entidad asignada
 
@@ -122,10 +133,5 @@ Total: **40 pruebas unitarias**.
 | Liz Giselle Tuiran Alvarez | AlertaAmbiental | Implementado |
 | Integrante 2 | EstacionAmbiental | Implementado |
 | Integrante 3 | Municipio | Implementado |
-| Integrante 4 | MedicionCalidadAire | Implementado |
+| Jose Miguel Rojas Urueta | MedicionCalidadAire | Implementado |
 
-## Nota de continuidad
-
-La prioridad actual corresponde a **Actividad 7**. La base quedo lista
-para iniciar **Actividad 8 (GoF)** en la siguiente fase sin afectar la
-estabilidad del sistema actual.
