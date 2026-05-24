@@ -97,6 +97,7 @@ reglas de negocio y pruebas unitarias.
   `Buena`, `Aceptable`, `Daniña a la salud de grupos sensibles`,
   `Daniña a la salud`, `Muy daniña a la salud`, `Peligrosa`.
 
+
 ### AlertaAmbiental
 
 - CRUD completo sobre `data/alertas.json`.

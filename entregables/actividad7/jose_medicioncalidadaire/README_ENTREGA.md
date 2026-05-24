@@ -36,6 +36,15 @@
   existan en sus respectivos repositorios.
 - **Validaciones del modelo:** id, codigo DANE e id estacion no vacios;
   fecha tipo `datetime`; valor numerico positivo; origen valido.
+- **Reintento por campo en crear manual:** si un campo es invalido la
+  vista vuelve a pedirlo conservando los previos (no se pierde el
+  progreso). El usuario puede abortar en cualquier prompt escribiendo
+  `cancelar`.
+- **IDs case/space-insensitive:** los IDs de medicion, municipio y
+  estacion se canonicalizan a `strip().upper()` tanto al crear como al
+  buscar, asi que `" m001 "`, `"M001"` y `"m001"` apuntan al mismo
+  registro. La normalizacion se aplica en vista, controller y
+  repositorio.
 
 ## Patrones aplicados
 
@@ -64,12 +73,12 @@ python -m src.main
 
 Luego seleccionar la opcion **3. Modulo Mediciones**. El menu permite:
 
-1. Crear medicion (manual) — valida tipo, municipio, estacion, fecha y valor.
+1. Crear medicion (manual) — valida tipo, municipio, estacion, fecha y
+   valor; reintento in-situ por campo y `cancelar` para abortar.
 2. Listar mediciones.
 3. Actualizar medicion — solo MANUALES.
 4. Eliminar medicion — solo MANUALES.
-5. Recalcular niveles.
-6. Volver.
+5. Volver.
 
 ## Evidencias a adjuntar
 

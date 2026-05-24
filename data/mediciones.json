@@ -70,17 +70,5 @@
         "origen": "MANUAL",
         "observacion": "Medicion agregada manualmente",
         "diametro_aerodinamico": "PM2.5"
-    },
-    {
-        "id": "M003",
-        "codigo_dane_municipio": "76001",
-        "id_estacion": "EST-CAL-01",
-        "fecha": "2026-05-23T11:15:00",
-        "tipo": "PM",
-        "medicion": 58.7,
-        "nivel": "Daniña a la salud",
-        "origen": "MANUAL",
-        "observacion": "Medicion agregada manualmente",
-        "diametro_aerodinamico": "PM2.5"
     }
 ]

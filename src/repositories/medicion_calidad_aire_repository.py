@@ -14,6 +14,13 @@ from src.factories.medicion_factory import MedicionFactory
 from src.models.medicion_calidad_aire import MedicionCalidadAire
 
 
+def _canonical_id(valor) -> str:
+    """Forma canonica de un id: sin espacios y en mayusculas."""
+    if valor is None:
+        return ""
+    return str(valor).strip().upper()
+
+
 def _deserializar_medicion(item: dict) -> MedicionCalidadAire:
     """Reconstruye una medicion desde un dict del JSON."""
     try:
@@ -66,15 +73,17 @@ class MedicionRepository(IMedicionRepository):
         return [_deserializar_medicion(item) for item in self._leer_json()]
 
     def buscar_medicion_por_id(self, medicion_id: str) -> MedicionCalidadAire | None:
+        clave = _canonical_id(medicion_id)
         for item in self._leer_json():
-            if item.get("id") == medicion_id:
+            if _canonical_id(item.get("id")) == clave:
                 return _deserializar_medicion(item)
         return None
 
     def actualizar_medicion(self, medicion: MedicionCalidadAire) -> MedicionCalidadAire:
         data = self._leer_json()
+        clave = _canonical_id(medicion.id)
         for idx, item in enumerate(data):
-            if item.get("id") == medicion.id:
+            if _canonical_id(item.get("id")) == clave:
                 data[idx] = medicion.to_dict()
                 self._guardar_json(data)
                 return medicion
@@ -94,7 +103,11 @@ class MedicionRepository(IMedicionRepository):
                 "Solo se pueden eliminar mediciones MANUALES. "
                 f"Origen: {medicion.origen}"
             )
-        data = [item for item in self._leer_json() if item.get("id") != medicion_id]
+        clave = _canonical_id(medicion_id)
+        data = [
+            item for item in self._leer_json()
+            if _canonical_id(item.get("id")) != clave
+        ]
         self._guardar_json(data)
         return True
 

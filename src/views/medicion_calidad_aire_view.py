@@ -5,7 +5,7 @@ entradas. No accede al repositorio ni contiene reglas de dominio.
 """
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Iterable, Optional
+from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
 from src.models.medicion_calidad_aire import MedicionCalidadAire
 from src.repositories.estacion_repository import EstacionRepository
@@ -13,6 +13,10 @@ from src.repositories.municipio_repository import MunicipioRepository
 
 if TYPE_CHECKING:
     from src.controllers.medicion_calidad_aire_controller import MedicionController
+
+
+class _OperacionCancelada(Exception):
+    """El usuario abortó el prompt escribiendo 'cancelar'."""
 
 
 class MedicionCalidadAireView:
@@ -29,8 +33,7 @@ class MedicionCalidadAireView:
             print("2. Listar mediciones")
             print("3. Actualizar medicion")
             print("4. Eliminar medicion")
-            print("5. Recalcular niveles")
-            print("6. Volver")
+            print("5. Volver")
             opcion = input("Seleccione una opcion: ").strip()
             if opcion == "1":
                 self._accion_crear()
@@ -41,8 +44,6 @@ class MedicionCalidadAireView:
             elif opcion == "4":
                 self._accion_eliminar()
             elif opcion == "5":
-                self.controller.calcular_niveles_pendientes()
-            elif opcion == "6":
                 return
             else:
                 self.show_error("Opcion invalida.")
@@ -57,55 +58,53 @@ class MedicionCalidadAireView:
 
     # ── acciones del menu ────────────────────────────────────────────
     def _accion_crear(self) -> None:
-        tipo = self.pedir_opcion("Tipo", ["PM"])
-        if tipo is None:
+        print("(Escriba 'cancelar' en cualquier campo para abortar)")
+        try:
+            tipo = self._pedir_opcion_loop("Tipo", ["PM"])
+            medicion_id = self._pedir_id_loop("ID medicion")
+            codigo_dane = self._pedir_id_existente_loop(
+                "Codigo DANE municipio",
+                lambda v: MunicipioRepository().buscar_por_id(v) is not None,
+                "Municipio inexistente",
+            )
+            id_estacion = self._pedir_id_existente_loop(
+                "ID estacion",
+                lambda v: EstacionRepository().buscar(v) is not None,
+                "Estacion inexistente",
+            )
+            fecha = self._pedir_fecha_loop("Fecha")
+            valor = self._pedir_numero_loop("Valor de medicion")
+            extra: dict = {}
+            if tipo == "PM":
+                extra["diametro_aerodinamico"] = self._pedir_opcion_loop(
+                    "Diametro aerodinamico", ["PM10", "PM2.5"]
+                )
+        except _OperacionCancelada:
+            self.show_message("Operacion cancelada.")
             return
-        medicion_id = self.pedir_texto("ID medicion")
-        if not medicion_id:
-            return self.show_error("ID es obligatorio.")
-        codigo_dane = self.pedir_texto("Codigo DANE municipio")
-        if not codigo_dane:
-            return self.show_error("Codigo DANE es obligatorio.")
-        if MunicipioRepository().buscar_por_id(codigo_dane) is None:
-            return self.show_error(f"Municipio con codigo DANE {codigo_dane!r} no existe.")
-        id_estacion = self.pedir_texto("ID estacion")
-        if not id_estacion:
-            return self.show_error("ID estacion es obligatorio.")
-        if EstacionRepository().buscar(id_estacion) is None:
-            return self.show_error(f"Estacion {id_estacion!r} no existe.")
-        fecha = self.pedir_fecha("Fecha")
-        if fecha is None:
-            return self.show_error("Fecha requerida.")
-        valor = self.pedir_numero("Valor de medicion")
-        if valor is None:
-            return self.show_error("Valor requerido.")
-
-        extra = {}
-        if tipo == "PM":
-            diametro = self.pedir_opcion("Diametro aerodinamico", ["PM10", "PM2.5"])
-            if diametro is None:
-                return
-            extra["diametro_aerodinamico"] = diametro
 
         self.controller.crear_medicion(
             tipo, medicion_id, codigo_dane, id_estacion, fecha, valor, **extra
         )
 
     def _accion_actualizar(self) -> None:
-        medicion_id = self.pedir_texto("ID medicion a actualizar")
+        crudo = self.pedir_texto("ID medicion a actualizar")
+        medicion_id = self._normalizar_id(crudo)
         if not medicion_id:
             return
         print("(Deje vacio cualquier campo que no desee modificar)")
+        codigo_dane = self.pedir_texto("Nuevo codigo DANE", opcional=True)
+        id_estacion = self.pedir_texto("Nuevo ID estacion", opcional=True)
         self.controller.actualizar_medicion(
             medicion_id,
-            codigo_dane_municipio=self.pedir_texto("Nuevo codigo DANE", opcional=True),
-            id_estacion=self.pedir_texto("Nuevo ID estacion", opcional=True),
+            codigo_dane_municipio=self._normalizar_id(codigo_dane),
+            id_estacion=self._normalizar_id(id_estacion),
             fecha=self.pedir_fecha("Nueva fecha"),
             medicion=self.pedir_numero("Nuevo valor"),
         )
 
     def _accion_eliminar(self) -> None:
-        medicion_id = self.pedir_texto("ID medicion a eliminar")
+        medicion_id = self._normalizar_id(self.pedir_texto("ID medicion a eliminar"))
         if medicion_id:
             self.controller.eliminar_medicion(medicion_id)
 
@@ -124,7 +123,19 @@ class MedicionCalidadAireView:
         for m in mediciones:
             print(m.to_dict())
 
-    # ── prompts de entrada ───────────────────────────────────────────
+    # ── normalizacion ────────────────────────────────────────────────
+    @staticmethod
+    def _normalizar_id(valor: Optional[str]) -> Optional[str]:
+        if valor is None:
+            return None
+        v = valor.strip().upper()
+        return v or None
+
+    @staticmethod
+    def _es_cancelar(crudo: str) -> bool:
+        return crudo.strip().lower() == "cancelar"
+
+    # ── prompts de entrada (one-shot, usados por actualizar/eliminar) ─
     def pedir_texto(self, etiqueta: str, opcional: bool = False) -> Optional[str]:
         valor = input(f"{etiqueta}: ").strip()
         if not valor:
@@ -158,3 +169,66 @@ class MedicionCalidadAireView:
             self.show_error(f"Opcion invalida: {crudo!r}. Validas: {opciones}")
             return None
         return crudo
+
+    # ── prompts en bucle (reintentan hasta entrada valida o 'cancelar') ─
+    def _pedir_id_loop(self, etiqueta: str) -> str:
+        while True:
+            crudo = input(f"{etiqueta}: ")
+            if self._es_cancelar(crudo):
+                raise _OperacionCancelada
+            valor = self._normalizar_id(crudo)
+            if valor:
+                return valor
+            self.show_error(f"{etiqueta} es obligatorio.")
+
+    def _pedir_id_existente_loop(
+        self,
+        etiqueta: str,
+        existe: Callable[[str], bool],
+        mensaje_no_existe: str,
+    ) -> str:
+        while True:
+            valor = self._pedir_id_loop(etiqueta)
+            if existe(valor):
+                return valor
+            self.show_error(f"{mensaje_no_existe}: {valor!r}.")
+
+    def _pedir_numero_loop(self, etiqueta: str) -> float:
+        while True:
+            crudo = input(f"{etiqueta}: ").strip()
+            if self._es_cancelar(crudo):
+                raise _OperacionCancelada
+            if not crudo:
+                self.show_error(f"{etiqueta} es obligatorio.")
+                continue
+            try:
+                return float(crudo)
+            except ValueError:
+                self.show_error(f"Valor numerico invalido: {crudo!r}")
+
+    def _pedir_fecha_loop(self, etiqueta: str) -> datetime:
+        while True:
+            crudo = input(
+                f"{etiqueta} (ISO 8601, p. ej. 2026-05-21T10:00): "
+            ).strip()
+            if self._es_cancelar(crudo):
+                raise _OperacionCancelada
+            if not crudo:
+                self.show_error(f"{etiqueta} es obligatoria.")
+                continue
+            try:
+                return datetime.fromisoformat(crudo)
+            except ValueError:
+                self.show_error(f"Fecha invalida: {crudo!r}")
+
+    def _pedir_opcion_loop(self, etiqueta: str, opciones: Iterable[str]) -> str:
+        opciones = list(opciones)
+        while True:
+            crudo = input(f"{etiqueta} {opciones}: ").strip()
+            if self._es_cancelar(crudo):
+                raise _OperacionCancelada
+            if crudo in opciones:
+                return crudo
+            self.show_error(
+                f"Opcion invalida: {crudo!r}. Validas: {opciones}"
+            )

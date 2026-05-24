@@ -21,6 +21,7 @@ from src.models.estacion_ambiental import (
 from src.models.medicion_calidad_aire import MedicionCalidadAire
 from src.repositories.estacion_repository import EstacionRepository
 from src.repositories.medicion_calidad_aire_repository import IMedicionRepository
+from src.repositories.medicion_calidad_aire_repository import _canonical_id
 from src.views.medicion_calidad_aire_view import MedicionCalidadAireView
 
 
@@ -48,6 +49,9 @@ class MedicionController:
         **extra,
     ) -> None:
         """Registra una medicion MANUAL ingresada por el usuario."""
+        id = _canonical_id(id)
+        codigo_dane_municipio = _canonical_id(codigo_dane_municipio)
+        id_estacion = _canonical_id(id_estacion)
         if self._estaciones.buscar(id_estacion) is None:
             self.view.show_error(
                 f"Estacion {id_estacion!r} no existe. "
@@ -83,6 +87,11 @@ class MedicionController:
         **extra,
     ) -> None:
         """Modifica una medicion MANUAL existente (las AUTO son inmutables)."""
+        medicion_id = _canonical_id(medicion_id)
+        if codigo_dane_municipio is not None:
+            codigo_dane_municipio = _canonical_id(codigo_dane_municipio)
+        if id_estacion is not None:
+            id_estacion = _canonical_id(id_estacion)
         existente = self.repository.buscar_medicion_por_id(medicion_id)
         if existente is None:
             self.view.show_error(f"No existe medicion con id {medicion_id}")
@@ -127,6 +136,7 @@ class MedicionController:
         )
 
     def eliminar_medicion(self, medicion_id: str) -> None:
+        medicion_id = _canonical_id(medicion_id)
         try:
             self.repository.eliminar_medicion(medicion_id)
         except (DatoInvalidoError, RegistroNoEncontradoError) as e:
