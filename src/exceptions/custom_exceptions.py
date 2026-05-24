@@ -14,4 +14,4 @@ class RegistroNoEncontradoError(Exception):
 
 
 class ArchivoInvalidoError(Exception):
-    """Se lanza cuando un archivo de entrada (JSON) tiene formato incorrecto."""
+    """Se lanza cuando un archivo JSON tiene formato invalido."""
