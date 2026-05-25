@@ -25,7 +25,7 @@ modulo y CRUD de **Mediciones de Calidad del Aire**.
 
 ## Mi explicacion del CRUD (Jose) — Modulo Mediciones
 
-A partir de aqui se describe el trabajo individual realizado por **Jose**
+A partir de aqui se describe el trabajo individual 
 sobre el modulo de mediciones de calidad del aire.
 
 - **Entidad:** `MedicionCalidadAire` (clase base abstracta) +
@@ -108,11 +108,6 @@ Luego seleccionar la opcion **3. Modulo Mediciones**. El menu permite:
 4. Eliminar medicion — solo MANUALES.
 5. Volver.
 
-## Evidencias a adjuntar
-
-1. Pantallazo del CRUD en consola (crear/listar/actualizar/eliminar).
-2. Pantallazo de `pytest -v` mostrando las **30 pruebas** del modulo
-   de mediciones pasando.
 
 ```bash
 pytest tests/test_medicion_repository.py tests/test_medicion_modelo.py tests/test_medicion_controller.py -v
