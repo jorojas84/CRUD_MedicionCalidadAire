@@ -1,9 +1,14 @@
 """Punto de entrada principal de la Actividad 7."""
 
-from src.views.alerta_view import AlertaView
-from src.views.estacion_view import EstacionView
 from src.views.medicion_calidad_aire_view import MedicionCalidadAireView
-from src.views.municipio_view import MunicipioView
+
+
+class _DummyView:
+    def __init__(self, nombre: str) -> None:
+        self._nombre = nombre
+
+    def mostrar_menu(self) -> None:
+        print(f"\n[Dummy] Para esta prueba el modulo {self._nombre} no esta disponible")
 
 
 def _mostrar_menu_principal() -> None:
@@ -16,10 +21,10 @@ def _mostrar_menu_principal() -> None:
 
 
 def main() -> None:
-    estacion_view = EstacionView()
-    municipio_view = MunicipioView()
+    estacion_view = _DummyView("Estaciones")
+    municipio_view = _DummyView("Municipios")
     medicion_view = MedicionCalidadAireView()
-    alerta_view = AlertaView()
+    alerta_view = _DummyView("Alertas")
 
     while True:
         _mostrar_menu_principal()
