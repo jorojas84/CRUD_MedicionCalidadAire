@@ -18,8 +18,8 @@ una arquitectura **MVC** combinada con los patrones **Repository** y
 sin modificar el codigo existente (principio Abierto/Cerrado).
 
 Cada integrante del equipo desarrollo un modulo del sistema. El presente
-documento corresponde a la **evidencia individual de Jose** y describe el
-modulo y CRUD a su cargo: el de **Mediciones de Calidad del Aire**.
+documento corresponde a la **evidencia individual de Jose Rojas** y describe el
+modulo y CRUD de **Mediciones de Calidad del Aire**.
 
 ---
 
